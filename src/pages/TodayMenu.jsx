@@ -1,0 +1,193 @@
+import { useMenu } from '../context/MenuContext'
+
+export default function TodayMenu() {
+  const { todayRecipes, toggleTodayMenu, clearTodayMenu } = useMenu()
+
+  const totalTime = todayRecipes.reduce((sum, r) => sum + (r.cookTime || 0), 0)
+
+  if (todayRecipes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24">
+        <div
+          className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
+          style={{ background: 'var(--surface-hover)' }}
+        >
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <polyline points="12 7 12 12 16 14"/>
+          </svg>
+        </div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '15px', fontWeight: 500 }}>今天还没点菜</p>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+          去「菜单」里选几道想吃的吧
+        </p>
+      </div>
+    )
+  }
+
+  // 按点菜人分组统计
+  const nameGroups = {}
+  todayRecipes.forEach(r => {
+    const name = r._nickname || '匿名'
+    if (!nameGroups[name]) nameGroups[name] = []
+    nameGroups[name].push(r)
+  })
+
+  return (
+    <div className="space-y-6">
+      {/* 汇总卡片 */}
+      <div
+        className="rounded-2xl p-5"
+        style={{
+          background: 'var(--accent-light)',
+          border: '1px solid rgba(212, 116, 60, 0.12)',
+        }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
+              今日菜单
+            </p>
+            <p className="text-2xl font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>
+              {todayRecipes.length} 道菜
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>预计用时</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              {totalTime}<span className="text-base font-normal" style={{ color: 'var(--text-secondary)' }}> 分钟</span>
+            </p>
+          </div>
+        </div>
+
+        {/* 点菜人汇总 */}
+        {Object.keys(nameGroups).length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {Object.entries(nameGroups).map(([name, dishes]) => (
+              <span
+                key={name}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+                style={{
+                  background: 'var(--surface)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+                {name} · {dishes.length}道
+              </span>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={clearTodayMenu}
+          className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors"
+          style={{
+            background: 'var(--surface)',
+            color: 'var(--danger)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          清空菜单
+        </button>
+      </div>
+
+      {/* 菜品列表 */}
+      <div className="space-y-2">
+        {todayRecipes.map(recipe => (
+          <div
+            key={recipe.id}
+            className="flex items-center gap-4 p-4 rounded-2xl transition-colors"
+            style={{
+              background: 'var(--surface)',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            {/* 图片 */}
+            <div
+              className="w-16 h-16 rounded-xl shrink-0 overflow-hidden"
+              style={{ background: 'var(--surface-hover)' }}
+            >
+              {recipe.image ? (
+                <img
+                  src={recipe.image}
+                  alt={recipe.name}
+                  className="w-full h-full object-cover"
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-2xl">
+                  🍽️
+                </div>
+              )}
+            </div>
+
+            {/* 信息 */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-[15px] truncate" style={{ color: 'var(--text-primary)' }}>
+                  {recipe.name}
+                </h3>
+                {recipe._nickname && (
+                  <span
+                    className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background: 'var(--accent-light)',
+                      color: 'var(--accent)',
+                    }}
+                  >
+                    {recipe._nickname}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full"
+                  style={{
+                    background: 'var(--success-light)',
+                    color: 'var(--success)',
+                  }}
+                >
+                  {recipe.category}
+                </span>
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  {recipe.cookTime}分钟
+                </span>
+              </div>
+              {recipe.ingredients.length > 0 && (
+                <p className="text-xs mt-1.5 truncate" style={{ color: 'var(--text-tertiary)' }}>
+                  {recipe.ingredients.slice(0, 5).join('、')}
+                  {recipe.ingredients.length > 5 ? '...' : ''}
+                </p>
+              )}
+            </div>
+
+            {/* 移除按钮 */}
+            <button
+              onClick={() => toggleTodayMenu(recipe.id)}
+              className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+              style={{ color: 'var(--text-tertiary)' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'var(--danger-light)'
+                e.currentTarget.style.color = 'var(--danger)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'var(--text-tertiary)'
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
