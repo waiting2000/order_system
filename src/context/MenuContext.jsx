@@ -116,11 +116,12 @@ export function MenuProvider({ children }) {
 
   // -------- 今日菜单 --------
   const toggleTodayMenu = useCallback(async (recipeId) => {
-    const order = todayOrders.find(o => o.id === recipeId)
-    if (order) {
-      // 取消点菜
-      await fetch(`${API_BASE}/orders/recipe/${recipeId}`, { method: 'DELETE' })
-      setTodayOrders(prev => prev.filter(o => o.id !== recipeId))
+    // 查找「我」对这道菜的订单
+    const myOrder = todayOrders.find(o => o.id === recipeId && o.nickname === nickname)
+    if (myOrder) {
+      // 取消我的点菜
+      await fetch(`${API_BASE}/orders/${myOrder.order_id}`, { method: 'DELETE' })
+      setTodayOrders(prev => prev.filter(o => o.order_id !== myOrder.order_id))
     } else {
       // 点菜（带昵称）
       const res = await fetch(`${API_BASE}/orders`, {
@@ -136,28 +137,35 @@ export function MenuProvider({ children }) {
   }, [todayOrders, nickname])
 
   const isInTodayMenu = useCallback((recipeId) => {
-    return todayOrders.some(o => o.id === recipeId)
-  }, [todayOrders])
+    return todayOrders.some(o => o.id === recipeId && o.nickname === nickname)
+  }, [todayOrders, nickname])
 
   const clearTodayMenu = useCallback(async () => {
     await fetch(`${API_BASE}/orders`, { method: 'DELETE' })
     setTodayOrders([])
   }, [])
 
-  // 已点菜谱（从 orders 提取菜谱数据）
+  // 已点菜谱（按菜品聚合，同名菜合并为一组，显示所有点菜人）
   const todayRecipes = useMemo(() => {
-    const seen = new Set()
-    return todayOrders.filter(o => {
-      if (seen.has(o.id)) return false
-      seen.add(o.id)
-      return true
-    }).map(o => ({
-      ...o,
-      // 保留菜品本身的所有字段，加上 order 特有字段
-      _nickname: o.nickname || '',
-      _orderId: o.order_id,
-      _orderTime: o.order_time,
-    }))
+    const groups = {}
+    todayOrders.forEach(o => {
+      const key = o.id // recipe id
+      if (!groups[key]) {
+        groups[key] = {
+          ...o,
+          _nicknames: [],
+          _orderIds: [],
+        }
+      }
+      groups[key]._nicknames.push(o.nickname || '匿名')
+      groups[key]._orderIds.push(o.order_id)
+    })
+    return Object.values(groups).sort((a, b) => {
+      // 按最新下单时间排序
+      const ta = new Date(a.order_time || 0).getTime()
+      const tb = new Date(b.order_time || 0).getTime()
+      return tb - ta
+    })
   }, [todayOrders])
 
   // -------- 食材清单（从今日菜谱聚合） --------

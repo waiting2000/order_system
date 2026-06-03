@@ -98,12 +98,13 @@ router.delete('/recipes/:id', (req, res) => {
 
 // ==================== 今日菜单 API ====================
 
-// 获取今日菜单
+// 获取今日菜单（仅返回今天的）
 router.get('/orders', (req, res) => {
   const orders = db.prepare(`
     SELECT d.id as order_id, r.*, d.created_at as order_time, d.nickname
     FROM daily_orders d
     JOIN recipes r ON d.recipe_id = r.id
+    WHERE date(d.created_at) = date('now', 'localtime')
     ORDER BY d.id DESC
   `).all();
 
@@ -122,10 +123,12 @@ router.post('/orders', (req, res) => {
   const recipe = db.prepare('SELECT * FROM recipes WHERE id = ?').get(recipeId);
   if (!recipe) return res.status(404).json({ error: '菜谱不存在' });
 
-  // 检查是否已点过（去重）
-  const existing = db.prepare('SELECT * FROM daily_orders WHERE recipe_id = ?').get(recipeId);
+  // 同一个人的同一道菜不重复点（允许不同人点同一道菜）
+  const existing = db.prepare(
+    'SELECT * FROM daily_orders WHERE recipe_id = ? AND nickname = ? AND date(created_at) = date(\'now\', \'localtime\')'
+  ).get(recipeId, nickname || '');
   if (existing) {
-    return res.status(409).json({ error: '这道菜已经在今日菜单中了' });
+    return res.status(409).json({ error: '你已经点过这道菜了' });
   }
 
   db.prepare('INSERT INTO daily_orders (recipe_id, nickname) VALUES (?, ?)').run(recipeId, nickname || '');

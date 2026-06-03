@@ -1,8 +1,10 @@
 import { useMenu } from '../context/MenuContext'
 
 export default function TodayMenu() {
-  const { todayRecipes, toggleTodayMenu, clearTodayMenu } = useMenu()
+  const { todayRecipes, toggleTodayMenu, clearTodayMenu, nickname } = useMenu()
 
+  // 统计：去除聚合后的重复计数
+  const totalDishes = todayRecipes.reduce((sum, r) => sum + (r._nicknames?.length || 1), 0)
   const totalTime = todayRecipes.reduce((sum, r) => sum + (r.cookTime || 0), 0)
 
   if (todayRecipes.length === 0) {
@@ -25,12 +27,13 @@ export default function TodayMenu() {
     )
   }
 
-  // 按点菜人分组统计
-  const nameGroups = {}
+  // 按点菜人分组统计（每人点了多少道菜）
+  const personStats = {}
   todayRecipes.forEach(r => {
-    const name = r._nickname || '匿名'
-    if (!nameGroups[name]) nameGroups[name] = []
-    nameGroups[name].push(r)
+    (r._nicknames || []).forEach(name => {
+      const n = name || '匿名'
+      personStats[n] = (personStats[n] || 0) + 1
+    })
   })
 
   return (
@@ -49,7 +52,7 @@ export default function TodayMenu() {
               今日菜单
             </p>
             <p className="text-2xl font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>
-              {todayRecipes.length} 道菜
+              {todayRecipes.length} 道 · {totalDishes} 人次
             </p>
           </div>
           <div className="text-right">
@@ -61,9 +64,9 @@ export default function TodayMenu() {
         </div>
 
         {/* 点菜人汇总 */}
-        {Object.keys(nameGroups).length > 0 && (
+        {Object.keys(personStats).length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            {Object.entries(nameGroups).map(([name, dishes]) => (
+            {Object.entries(personStats).map(([name, count]) => (
               <span
                 key={name}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
@@ -77,7 +80,7 @@ export default function TodayMenu() {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
-                {name} · {dishes.length}道
+                {name} · {count}道
               </span>
             ))}
           </div>
@@ -132,19 +135,22 @@ export default function TodayMenu() {
                 <h3 className="font-semibold text-[15px] truncate" style={{ color: 'var(--text-primary)' }}>
                   {recipe.name}
                 </h3>
-                {recipe._nickname && (
+              </div>
+              <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                {recipe._nicknames?.map((n, i) => (
                   <span
-                    className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full"
+                    key={i}
+                    className="text-[10px] px-1.5 py-0.5 rounded-full"
                     style={{
-                      background: 'var(--accent-light)',
-                      color: 'var(--accent)',
+                      background: n === nickname ? 'var(--accent)' : 'var(--accent-light)',
+                      color: n === nickname ? '#fff' : 'var(--accent)',
                     }}
                   >
-                    {recipe._nickname}
+                    {n}
                   </span>
-                )}
+                ))}
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-2 mt-1">
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
                   style={{
@@ -166,25 +172,29 @@ export default function TodayMenu() {
               )}
             </div>
 
-            {/* 移除按钮 */}
-            <button
-              onClick={() => toggleTodayMenu(recipe.id)}
-              className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-              style={{ color: 'var(--text-tertiary)' }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'var(--danger-light)'
-                e.currentTarget.style.color = 'var(--danger)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = 'var(--text-tertiary)'
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
+            {/* 移除按钮（仅操作自己的订单） */}
+            {recipe._nicknames?.includes(nickname) ? (
+              <button
+                onClick={() => toggleTodayMenu(recipe.id)}
+                className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+                style={{ color: 'var(--text-tertiary)' }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'var(--danger-light)'
+                  e.currentTarget.style.color = 'var(--danger)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--text-tertiary)'
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            ) : (
+              <div className="shrink-0 w-9 h-9" />
+            )}
           </div>
         ))}
       </div>
