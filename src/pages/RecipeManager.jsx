@@ -27,19 +27,27 @@ export default function RecipeManager() {
     setShowForm(true)
   }
 
-  const handleDelete = (id) => {
-    deleteRecipe(id)
-    setDeleteConfirm(null)
+  const handleDelete = async (id) => {
+    try {
+      await deleteRecipe(id)
+      setDeleteConfirm(null)
+    } catch {
+      // Toast already shown by context
+    }
   }
 
-  const handleSave = (data) => {
-    if (editingRecipe.id && recipes.find(r => r.id === editingRecipe.id)) {
-      updateRecipe(editingRecipe.id, data)
-    } else {
-      addRecipe(data)
+  const handleSave = async (data) => {
+    try {
+      if (editingRecipe.id && recipes.find(r => r.id === editingRecipe.id)) {
+        await updateRecipe(editingRecipe.id, data)
+      } else {
+        await addRecipe(data)
+      }
+      setShowForm(false)
+      setEditingRecipe(null)
+    } catch {
+      // Toast already shown by context — keep form open so user can retry
     }
-    setShowForm(false)
-    setEditingRecipe(null)
   }
 
   const handleExport = () => {

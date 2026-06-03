@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from './AuthContext'
+import { useToast } from './ToastContext'
 
 const MenuContext = createContext(null)
 
@@ -27,6 +28,7 @@ export function createRecipe(data = {}) {
 
 export function MenuProvider({ children }) {
   const { token, user } = useAuth()
+  const toast = useToast()
   const nickname = user?.nickname || ''
 
   const [recipes, setRecipes] = useState([])
@@ -56,7 +58,7 @@ export function MenuProvider({ children }) {
         setTodayOrders(ordersData)
       }
     } catch (err) {
-      console.error('加载数据失败:', err)
+      toast.error('加载数据失败，请检查网络连接')
     } finally {
       setLoading(false)
     }
@@ -70,81 +72,117 @@ export function MenuProvider({ children }) {
 
   // -------- 菜谱 CRUD --------
   const addRecipe = useCallback(async (data) => {
-    const res = await fetch(`${API_BASE}/recipes`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({
-        name: data.name,
-        category: data.category,
-        image: data.image || '',
-        description: data.description || '',
-        ingredients: data.ingredients || [],
-        cookTime: Number(data.cookTime) || 30,
-        difficulty: data.difficulty || '简单',
-      }),
-    })
-    if (!res.ok) throw new Error('添加失败')
-    const recipe = await res.json()
-    setRecipes(prev => [recipe, ...prev])
-    return recipe
-  }, [authHeaders])
+    try {
+      const res = await fetch(`${API_BASE}/recipes`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          name: data.name,
+          category: data.category,
+          image: data.image || '',
+          description: data.description || '',
+          ingredients: data.ingredients || [],
+          cookTime: Number(data.cookTime) || 30,
+          difficulty: data.difficulty || '简单',
+        }),
+      })
+      if (!res.ok) throw new Error('添加失败')
+      const recipe = await res.json()
+      setRecipes(prev => [recipe, ...prev])
+      toast.success(`「${recipe.name}」已添加`)
+      return recipe
+    } catch (err) {
+      toast.error('添加菜谱失败，请重试')
+      throw err
+    }
+  }, [authHeaders, toast])
 
   const updateRecipe = useCallback(async (id, data) => {
-    const res = await fetch(`${API_BASE}/recipes/${id}`, {
-      method: 'PUT',
-      headers: authHeaders,
-      body: JSON.stringify({
-        name: data.name,
-        category: data.category,
-        image: data.image,
-        description: data.description,
-        ingredients: data.ingredients,
-        cookTime: data.cookTime != null ? Number(data.cookTime) : undefined,
-        difficulty: data.difficulty,
-      }),
-    })
-    if (!res.ok) throw new Error('更新失败')
-    const updated = await res.json()
-    setRecipes(prev => prev.map(r => r.id === id ? updated : r))
-  }, [authHeaders])
+    try {
+      const res = await fetch(`${API_BASE}/recipes/${id}`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({
+          name: data.name,
+          category: data.category,
+          image: data.image,
+          description: data.description,
+          ingredients: data.ingredients,
+          cookTime: data.cookTime != null ? Number(data.cookTime) : undefined,
+          difficulty: data.difficulty,
+        }),
+      })
+      if (!res.ok) throw new Error('更新失败')
+      const updated = await res.json()
+      setRecipes(prev => prev.map(r => r.id === id ? updated : r))
+      toast.success(`「${updated.name}」已更新`)
+    } catch (err) {
+      toast.error('更新菜谱失败，请重试')
+      throw err
+    }
+  }, [authHeaders, toast])
 
   const deleteRecipe = useCallback(async (id) => {
-    const res = await fetch(`${API_BASE}/recipes/${id}`, { method: 'DELETE', headers: authHeaders })
-    if (!res.ok) throw new Error('删除失败')
-    setRecipes(prev => prev.filter(r => r.id !== id))
-    setTodayOrders(prev => prev.filter(o => o.id !== id))
-  }, [authHeaders])
+    try {
+      const recipe = recipes.find(r => r.id === id)
+      const res = await fetch(`${API_BASE}/recipes/${id}`, { method: 'DELETE', headers: authHeaders })
+      if (!res.ok) throw new Error('删除失败')
+      setRecipes(prev => prev.filter(r => r.id !== id))
+      setTodayOrders(prev => prev.filter(o => o.id !== id))
+      if (recipe) toast.success(`「${recipe.name}」已删除`)
+    } catch (err) {
+      toast.error('删除菜谱失败，请重试')
+      throw err
+    }
+  }, [authHeaders, recipes, toast])
 
   // -------- 今日菜单 --------
   const toggleTodayMenu = useCallback(async (recipeId) => {
     const myOrder = todayOrders.find(o => o.id === recipeId && o.nickname === nickname)
     if (myOrder) {
-      await fetch(`${API_BASE}/orders/${myOrder.order_id}`, {
-        method: 'DELETE',
-        headers: authHeaders,
-      })
-      setTodayOrders(prev => prev.filter(o => o.order_id !== myOrder.order_id))
+      try {
+        await fetch(`${API_BASE}/orders/${myOrder.order_id}`, {
+          method: 'DELETE',
+          headers: authHeaders,
+        })
+        setTodayOrders(prev => prev.filter(o => o.order_id !== myOrder.order_id))
+      } catch {
+        toast.error('取消点菜失败')
+      }
     } else {
-      const res = await fetch(`${API_BASE}/orders`, {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({ recipeId }),
-      })
-      if (res.status === 409) return
-      if (!res.ok) throw new Error('点菜失败')
-      const newOrder = await res.json()
-      setTodayOrders(prev => [...prev, newOrder])
+      try {
+        const res = await fetch(`${API_BASE}/orders`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ recipeId }),
+        })
+        if (res.status === 409) {
+          toast.info('你已经点过这道菜了')
+          return
+        }
+        if (!res.ok) throw new Error('点菜失败')
+        const newOrder = await res.json()
+        setTodayOrders(prev => [...prev, newOrder])
+      } catch (err) {
+        if (err.message !== '点菜失败') return
+        toast.error('点菜失败，请重试')
+      }
     }
-  }, [todayOrders, nickname, authHeaders])
+  }, [todayOrders, nickname, authHeaders, toast])
 
   const isInTodayMenu = useCallback((recipeId) => {
     return todayOrders.some(o => o.id === recipeId && o.nickname === nickname)
   }, [todayOrders, nickname])
 
   const clearTodayMenu = useCallback(async () => {
-    await fetch(`${API_BASE}/orders`, { method: 'DELETE', headers: authHeaders })
-    setTodayOrders([])
-  }, [authHeaders])
+    try {
+      await fetch(`${API_BASE}/orders`, { method: 'DELETE', headers: authHeaders })
+      setTodayOrders([])
+      toast.success('今日菜单已清空')
+    } catch {
+      toast.error('清空菜单失败')
+    }
+  }, [authHeaders, toast])
 
   // 已点菜谱（按菜品聚合）
   const todayRecipes = useMemo(() => {
@@ -229,8 +267,13 @@ export function MenuProvider({ children }) {
         }
       } catch { /* skip failed */ }
     }
+    if (added > 0) {
+      toast.success(`成功导入 ${added} 道菜谱${skipped > 0 ? `（跳过 ${skipped} 道重复）` : ''}`)
+    } else if (skipped > 0) {
+      toast.info('所有菜谱已存在，无需导入')
+    }
     return { added, skipped, total: jsonData.recipes.length }
-  }, [recipes, authHeaders])
+  }, [recipes, authHeaders, toast])
 
   const value = {
     recipes,

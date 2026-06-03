@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ToastProvider } from './context/ToastContext'
 import { MenuProvider, useMenu } from './context/MenuContext'
 import MenuBrowser from './pages/MenuBrowser'
 import TodayMenu from './pages/TodayMenu'
@@ -189,11 +190,13 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AuthGate>
-        <MenuProvider>
-          <AppContent />
-        </MenuProvider>
-      </AuthGate>
+      <ToastProvider>
+        <AuthGate>
+          <MenuProvider>
+            <AppContent />
+          </MenuProvider>
+        </AuthGate>
+      </ToastProvider>
     </AuthProvider>
   )
 }
