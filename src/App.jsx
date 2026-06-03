@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import { MenuProvider, useMenu } from './context/MenuContext'
 import MenuBrowser from './pages/MenuBrowser'
 import TodayMenu from './pages/TodayMenu'
 import RecipeManager from './pages/RecipeManager'
 import ShoppingList from './pages/ShoppingList'
+import Login from './pages/Login'
 
 const TABS = [
   { key: 'browse', label: '菜单', icon: (
@@ -38,17 +40,10 @@ const TABS = [
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('browse')
-  const { todayRecipes, loading, nickname, updateNickname } = useMenu()
-  const [showNickname, setShowNickname] = useState(false)
+  const { todayRecipes, loading, nickname } = useMenu()
+  const { user, logout } = useAuth()
 
   const todayCount = todayRecipes.length
-
-  // 首次打开 → 弹昵称设置
-  useEffect(() => {
-    if (!loading && !nickname) {
-      setShowNickname(true)
-    }
-  }, [loading, nickname])
 
   if (loading) {
     return (
@@ -68,7 +63,7 @@ function AppContent() {
             ))}
           </div>
           <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            正在连接数据库...
+            加载中...
           </p>
         </div>
       </div>
@@ -104,17 +99,26 @@ function AppContent() {
                 已选 {todayCount} 道
               </button>
             )}
-            <button
-              onClick={() => setShowNickname(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors"
-              style={{ background: 'var(--surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-              {nickname || '设置昵称'}
-            </button>
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium"
+                style={{ background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+                {nickname || user?.username || '用户'}
+              </span>
+              <button
+                onClick={logout}
+                className="text-xs transition-colors"
+                style={{ color: 'var(--text-tertiary)' }}
+                title="退出登录"
+              >
+                退出
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -141,7 +145,6 @@ function AppContent() {
           {TABS.map(tab => {
             const active = activeTab === tab.key
             const hasBadge = tab.key === 'today' && todayCount > 0
-            const hasShopBadge = tab.key === 'shop' && todayCount > 0
             return (
               <button
                 key={tab.key}
@@ -168,12 +171,6 @@ function AppContent() {
                     {todayCount}
                   </span>
                 )}
-                {hasShopBadge && !hasBadge && todayCount > 0 && (
-                  <span
-                    className="absolute top-1 right-1/4 w-[6px] h-[6px] rounded-full"
-                    style={{ background: 'var(--accent)' }}
-                  />
-                )}
                 {active && (
                   <span
                     className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-full"
@@ -185,106 +182,42 @@ function AppContent() {
           })}
         </div>
       </nav>
-
-      {/* 昵称设置弹窗 */}
-      {showNickname && (
-        <NicknameModal
-          current={nickname}
-          onSave={(name) => {
-            updateNickname(name)
-            setShowNickname(false)
-          }}
-          onClose={() => setShowNickname(false)}
-        />
-      )}
-    </div>
-  )
-}
-
-// ---- 昵称设置弹窗 ----
-function NicknameModal({ current, onSave, onClose }) {
-  const [name, setName] = useState(current || '')
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) return
-    onSave(trimmed)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-5" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: 'rgba(45, 42, 37, 0.4)', backdropFilter: 'blur(4px)' }} />
-      <div
-        className="relative w-full max-w-xs p-6 rounded-3xl animate-slide-up"
-        style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-lg)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full"
-          style={{ background: 'var(--accent-light)' }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-        </div>
-        <h3 className="text-base font-bold text-center mb-1" style={{ color: 'var(--text-primary)' }}>
-          {current ? '修改昵称' : '欢迎加入家庭厨房'}
-        </h3>
-        <p className="text-xs text-center mb-4" style={{ color: 'var(--text-tertiary)' }}>
-          设置你的昵称，方便家人知道你点了什么菜
-        </p>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="比如：妈妈、爸爸、大宝..."
-            maxLength={10}
-            autoFocus
-            className="w-full px-4 py-3 rounded-xl text-sm outline-none text-center"
-            style={{
-              background: 'var(--bg)',
-              color: 'var(--text-primary)',
-              border: '1.5px solid var(--border)',
-            }}
-          />
-          <div className="flex gap-3 mt-4">
-            {current && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-                style={{ background: 'var(--surface-hover)', color: 'var(--text-secondary)' }}
-              >
-                取消
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={!name.trim()}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-40"
-              style={{ background: 'var(--accent)' }}
-            >
-              确定
-            </button>
-          </div>
-        </form>
-      </div>
-      <style>{`
-        @keyframes slide-up {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-slide-up { animation: slide-up 0.3s ease-out; }
-      `}</style>
     </div>
   )
 }
 
 export default function App() {
   return (
-    <MenuProvider>
-      <AppContent />
-    </MenuProvider>
+    <AuthProvider>
+      <AuthGate>
+        <MenuProvider>
+          <AppContent />
+        </MenuProvider>
+      </AuthGate>
+    </AuthProvider>
   )
+}
+
+// Auth gate: show login page if not authenticated
+function AuthGate({ children }) {
+  const { isAuthenticated, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <div className="flex gap-1.5">
+          {[0, 1, 2].map(i => (
+            <div
+              key={i}
+              className="w-2.5 h-2.5 rounded-full animate-bounce"
+              style={{ background: 'var(--accent)', animationDelay: `${i * 0.15}s`, opacity: 0.6 }}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) return <Login />
+  return children
 }

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import { useAuth } from './AuthContext'
 
 const MenuContext = createContext(null)
 
@@ -24,54 +25,54 @@ export function createRecipe(data = {}) {
   }
 }
 
-// 昵称工具
-const NICKNAME_KEY = 'family_nickname'
-function loadNickname() {
-  try { return localStorage.getItem(NICKNAME_KEY) || '' } catch { return '' }
-}
-function saveNickname(name) {
-  try { localStorage.setItem(NICKNAME_KEY, name) } catch { /* ignore */ }
-}
-
 export function MenuProvider({ children }) {
+  const { token, user } = useAuth()
+  const nickname = user?.nickname || ''
+
   const [recipes, setRecipes] = useState([])
-  const [todayOrders, setTodayOrders] = useState([])    // [{ order_id, recipe_id, nickname, order_time, ...recipeFields }]
+  const [todayOrders, setTodayOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [nickname, setNickname] = useState(loadNickname)
+
+  // Helper: build authenticated headers
+  const authHeaders = useMemo(() => ({
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }), [token])
 
   // 初始加载
   const fetchData = useCallback(async () => {
+    if (!token) return
     try {
       const [recipesRes, ordersRes] = await Promise.all([
-        fetch(`${API_BASE}/recipes`),
-        fetch(`${API_BASE}/orders`),
+        fetch(`${API_BASE}/recipes`, { headers: authHeaders }),
+        fetch(`${API_BASE}/orders`, { headers: authHeaders }),
       ])
-      const recipesData = await recipesRes.json()
-      const ordersData = await ordersRes.json()
-      setRecipes(recipesData)
-      setTodayOrders(ordersData)
+      if (recipesRes.ok) {
+        const recipesData = await recipesRes.json()
+        setRecipes(recipesData)
+      }
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json()
+        setTodayOrders(ordersData)
+      }
     } catch (err) {
       console.error('加载数据失败:', err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [token, authHeaders])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  // -------- 昵称 --------
-  const updateNickname = useCallback((name) => {
-    setNickname(name)
-    saveNickname(name)
-  }, [])
+    if (token) {
+      fetchData()
+    }
+  }, [token, fetchData])
 
   // -------- 菜谱 CRUD --------
   const addRecipe = useCallback(async (data) => {
     const res = await fetch(`${API_BASE}/recipes`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({
         name: data.name,
         category: data.category,
@@ -86,12 +87,12 @@ export function MenuProvider({ children }) {
     const recipe = await res.json()
     setRecipes(prev => [recipe, ...prev])
     return recipe
-  }, [])
+  }, [authHeaders])
 
   const updateRecipe = useCallback(async (id, data) => {
     const res = await fetch(`${API_BASE}/recipes/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({
         name: data.name,
         category: data.category,
@@ -105,70 +106,65 @@ export function MenuProvider({ children }) {
     if (!res.ok) throw new Error('更新失败')
     const updated = await res.json()
     setRecipes(prev => prev.map(r => r.id === id ? updated : r))
-  }, [])
+  }, [authHeaders])
 
   const deleteRecipe = useCallback(async (id) => {
-    const res = await fetch(`${API_BASE}/recipes/${id}`, { method: 'DELETE' })
+    const res = await fetch(`${API_BASE}/recipes/${id}`, { method: 'DELETE', headers: authHeaders })
     if (!res.ok) throw new Error('删除失败')
     setRecipes(prev => prev.filter(r => r.id !== id))
     setTodayOrders(prev => prev.filter(o => o.id !== id))
-  }, [])
+  }, [authHeaders])
 
   // -------- 今日菜单 --------
   const toggleTodayMenu = useCallback(async (recipeId) => {
-    // 查找「我」对这道菜的订单
     const myOrder = todayOrders.find(o => o.id === recipeId && o.nickname === nickname)
     if (myOrder) {
-      // 取消我的点菜
-      await fetch(`${API_BASE}/orders/${myOrder.order_id}`, { method: 'DELETE' })
+      await fetch(`${API_BASE}/orders/${myOrder.order_id}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      })
       setTodayOrders(prev => prev.filter(o => o.order_id !== myOrder.order_id))
     } else {
-      // 点菜（带昵称）
       const res = await fetch(`${API_BASE}/orders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipeId, nickname }),
+        headers: authHeaders,
+        body: JSON.stringify({ recipeId }),
       })
       if (res.status === 409) return
       if (!res.ok) throw new Error('点菜失败')
       const newOrder = await res.json()
       setTodayOrders(prev => [...prev, newOrder])
     }
-  }, [todayOrders, nickname])
+  }, [todayOrders, nickname, authHeaders])
 
   const isInTodayMenu = useCallback((recipeId) => {
     return todayOrders.some(o => o.id === recipeId && o.nickname === nickname)
   }, [todayOrders, nickname])
 
   const clearTodayMenu = useCallback(async () => {
-    await fetch(`${API_BASE}/orders`, { method: 'DELETE' })
+    await fetch(`${API_BASE}/orders`, { method: 'DELETE', headers: authHeaders })
     setTodayOrders([])
-  }, [])
+  }, [authHeaders])
 
-  // 已点菜谱（按菜品聚合，同名菜合并为一组，显示所有点菜人）
+  // 已点菜谱（按菜品聚合）
   const todayRecipes = useMemo(() => {
     const groups = {}
     todayOrders.forEach(o => {
-      const key = o.id // recipe id
+      const key = o.id
       if (!groups[key]) {
-        groups[key] = {
-          ...o,
-          _nicknames: [],
-          _orderIds: [],
-        }
+        groups[key] = { ...o, _nicknames: [], _orderIds: [] }
       }
       groups[key]._nicknames.push(o.nickname || '匿名')
       groups[key]._orderIds.push(o.order_id)
     })
     return Object.values(groups).sort((a, b) => {
-      // 按最新下单时间排序
       const ta = new Date(a.order_time || 0).getTime()
       const tb = new Date(b.order_time || 0).getTime()
       return tb - ta
     })
   }, [todayOrders])
 
-  // -------- 食材清单（从今日菜谱聚合） --------
+  // -------- 食材清单 --------
   const shoppingList = useMemo(() => {
     const map = {}
     todayRecipes.forEach(recipe => {
@@ -188,13 +184,9 @@ export function MenuProvider({ children }) {
     return Object.values(map).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
   }, [todayRecipes])
 
-  // -------- 导出（备份用） --------
+  // -------- 导出 --------
   const exportData = useCallback(() => {
-    const data = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      recipes,
-    }
+    const data = { version: 1, exportedAt: new Date().toISOString(), recipes }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -205,12 +197,11 @@ export function MenuProvider({ children }) {
     return data
   }, [recipes])
 
-  // -------- 导入（通过 API 逐条添加） --------
+  // -------- 导入 --------
   const importData = useCallback(async (jsonData) => {
     if (!jsonData || !jsonData.recipes) {
       throw new Error('文件格式不正确，缺少菜谱数据')
     }
-
     const existingNames = new Set(recipes.map(r => r.name))
     const toImport = jsonData.recipes.filter(r => !existingNames.has(r.name))
     const skipped = jsonData.recipes.length - toImport.length
@@ -220,7 +211,7 @@ export function MenuProvider({ children }) {
       try {
         const res = await fetch(`${API_BASE}/recipes`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify({
             name: r.name,
             category: r.category || '荤菜',
@@ -238,9 +229,8 @@ export function MenuProvider({ children }) {
         }
       } catch { /* skip failed */ }
     }
-
     return { added, skipped, total: jsonData.recipes.length }
-  }, [recipes])
+  }, [recipes, authHeaders])
 
   const value = {
     recipes,
@@ -248,7 +238,6 @@ export function MenuProvider({ children }) {
     todayRecipes,
     loading,
     nickname,
-    updateNickname,
     shoppingList,
     addRecipe,
     updateRecipe,

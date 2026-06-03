@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRoutes from './routes/api.js';
+import authRoutes from './routes/auth.js';
 import db from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -11,7 +12,10 @@ const PORT = process.env.PORT || 3001;
 // JSON body parser（50MB 上限，支持 Base64 图片）
 app.use(express.json({ limit: '50mb' }));
 
-// API routes
+// Auth routes（无需认证）
+app.use('/api/auth', authRoutes);
+
+// Business API routes（需要认证）
 app.use('/api', apiRoutes);
 
 // Serve frontend static files

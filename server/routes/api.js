@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
+
+// All business routes require authentication
+router.use(authMiddleware);
 
 // ==================== 菜谱 API ====================
 
@@ -115,23 +119,25 @@ router.get('/orders', (req, res) => {
   res.json(parsed);
 });
 
-// 点菜（添加到今日菜单）
+// 点菜（添加到今日菜单，昵称来自登录用户）
 router.post('/orders', (req, res) => {
-  const { recipeId, nickname } = req.body;
+  const { recipeId } = req.body;
   if (!recipeId) return res.status(400).json({ error: '请指定菜品' });
 
   const recipe = db.prepare('SELECT * FROM recipes WHERE id = ?').get(recipeId);
   if (!recipe) return res.status(404).json({ error: '菜谱不存在' });
 
+  const nickname = req.user.nickname;
+
   // 同一个人的同一道菜不重复点（允许不同人点同一道菜）
   const existing = db.prepare(
     'SELECT * FROM daily_orders WHERE recipe_id = ? AND nickname = ? AND date(created_at) = date(\'now\', \'localtime\')'
-  ).get(recipeId, nickname || '');
+  ).get(recipeId, nickname);
   if (existing) {
     return res.status(409).json({ error: '你已经点过这道菜了' });
   }
 
-  db.prepare('INSERT INTO daily_orders (recipe_id, nickname) VALUES (?, ?)').run(recipeId, nickname || '');
+  db.prepare('INSERT INTO daily_orders (recipe_id, nickname) VALUES (?, ?)').run(recipeId, nickname);
 
   const order = db.prepare(`
     SELECT d.id as order_id, r.*, d.created_at as order_time, d.nickname

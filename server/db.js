@@ -45,6 +45,17 @@ db.exec(`
 // Migration: add nickname column (safe to ignore if exists)
 try { db.exec(`ALTER TABLE daily_orders ADD COLUMN nickname TEXT DEFAULT ''`); } catch (e) { /* already exists */ }
 
+// Users table for authentication
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    nickname TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+`);
+
 // Seed default recipes if table is empty
 const count = db.prepare('SELECT COUNT(*) as cnt FROM recipes').get();
 if (count.cnt === 0) {
