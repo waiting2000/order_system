@@ -167,7 +167,7 @@ router.delete('/orders/recipe/:recipeId', (req, res) => {
 
 // 清空今日菜单
 router.delete('/orders', (req, res) => {
-  db.prepare('DELETE FROM daily_orders').run();
+  db.prepare("DELETE FROM daily_orders WHERE date(created_at) = date('now', 'localtime')").run();
   res.json({ success: true });
 });
 

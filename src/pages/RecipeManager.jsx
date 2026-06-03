@@ -328,24 +328,39 @@ function RecipeForm({ recipe, onSave, onClose }) {
     return Object.keys(errs).length === 0
   }
 
-  // 文件选择 → Base64
+  // 文件选择 → Canvas 压缩 → Base64
   const handleImageFile = (e) => {
     const file = e.target.files[0]
     if (!file) return
 
-    // 限制 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      setErrors({ image: '图片不能超过 10MB' })
+    // 限制原始文件 20MB
+    if (file.size > 20 * 1024 * 1024) {
+      setErrors({ image: '图片不能超过 20MB' })
       return
     }
 
     const reader = new FileReader()
     reader.onload = (ev) => {
-      update('image', ev.target.result)
+      const img = new Image()
+      img.onload = () => {
+        const MAX_WIDTH = 800
+        let { width, height } = img
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width)
+          width = MAX_WIDTH
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        const compressed = canvas.toDataURL('image/jpeg', 0.7)
+        update('image', compressed)
+      }
+      img.onerror = () => setErrors({ image: '图片加载失败，请重试' })
+      img.src = ev.target.result
     }
-    reader.onerror = () => {
-      setErrors({ image: '图片读取失败，请重试' })
-    }
+    reader.onerror = () => setErrors({ image: '图片读取失败，请重试' })
     reader.readAsDataURL(file)
     e.target.value = ''
   }
