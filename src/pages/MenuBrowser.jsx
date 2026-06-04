@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useMenu, CATEGORIES } from '../context/MenuContext'
+import RecipeDetail from '../components/RecipeDetail'
 
 const CATEGORY_EMOJI = {
   '荤菜': '🥩',
@@ -16,6 +17,7 @@ export default function MenuBrowser({ onGoToday }) {
   const { recipes, todayRecipes, toggleTodayMenu, isInTodayMenu } = useMenu()
   const [activeCategory, setActiveCategory] = useState('全部')
   const [search, setSearch] = useState('')
+  const [detailRecipe, setDetailRecipe] = useState(null)
 
   const filtered = useMemo(() => {
     let result = activeCategory === '全部'
@@ -162,7 +164,8 @@ export default function MenuBrowser({ onGoToday }) {
             return (
               <div
                 key={recipe.id}
-                className="rounded-2xl overflow-hidden transition-all duration-200"
+                className="rounded-2xl overflow-hidden transition-all duration-200 cursor-pointer active:scale-[0.98]"
+                onClick={() => setDetailRecipe(recipe)}
                 style={{
                   background: 'var(--surface)',
                   boxShadow: added ? '0 0 0 2px var(--accent), var(--shadow-md)' : 'var(--shadow-sm)',
@@ -242,6 +245,16 @@ export default function MenuBrowser({ onGoToday }) {
             )
           })}
         </div>
+      )}
+
+      {/* 菜谱详情弹窗 */}
+      {detailRecipe && (
+        <RecipeDetail
+          recipe={detailRecipe}
+          onClose={() => setDetailRecipe(null)}
+          onToggle={(id) => { toggleTodayMenu(id); setDetailRecipe(null) }}
+          isInMenu={isInTodayMenu(detailRecipe.id)}
+        />
       )}
     </div>
   )

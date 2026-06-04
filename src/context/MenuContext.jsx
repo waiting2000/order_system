@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
+import { useWS } from './WSContext'
 
 const MenuContext = createContext(null)
 
@@ -29,6 +30,7 @@ export function createRecipe(data = {}) {
 export function MenuProvider({ children }) {
   const { token, user } = useAuth()
   const toast = useToast()
+  const ws = useWS()
   const nickname = user?.nickname || ''
 
   const [recipes, setRecipes] = useState([])
@@ -69,6 +71,48 @@ export function MenuProvider({ children }) {
       fetchData()
     }
   }, [token, fetchData])
+
+  // ======= WebSocket 事件监听（来自其他客户端的变更） =======
+  useEffect(() => {
+    if (!token) return
+
+    const unsubs = [
+      // 菜谱新增
+      ws.on('recipe_added', (recipe) => {
+        setRecipes(prev => {
+          if (prev.some(r => r.id === recipe.id)) return prev
+          return [recipe, ...prev]
+        })
+      }),
+      // 菜谱更新
+      ws.on('recipe_updated', (updated) => {
+        setRecipes(prev => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r))
+        setTodayOrders(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o))
+      }),
+      // 菜谱删除
+      ws.on('recipe_deleted', ({ id }) => {
+        setRecipes(prev => prev.filter(r => r.id !== id))
+        setTodayOrders(prev => prev.filter(o => o.id !== id))
+      }),
+      // 点菜
+      ws.on('order_added', (order) => {
+        setTodayOrders(prev => {
+          if (prev.some(o => o.order_id === order.order_id)) return prev
+          return [...prev, order]
+        })
+      }),
+      // 取消点菜
+      ws.on('order_removed', ({ order_id }) => {
+        setTodayOrders(prev => prev.filter(o => o.order_id !== order_id))
+      }),
+      // 清空菜单
+      ws.on('orders_cleared', () => {
+        setTodayOrders([])
+      }),
+    ]
+
+    return () => unsubs.forEach(unsub => unsub())
+  }, [token, ws])
 
   // -------- 菜谱 CRUD --------
   const addRecipe = useCallback(async (data) => {

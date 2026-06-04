@@ -1,12 +1,15 @@
+import http from 'http';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRoutes from './routes/api.js';
 import authRoutes from './routes/auth.js';
 import db from './db.js';
+import { initWebSocket } from './ws.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
 
 // JSON body parser（50MB 上限，支持 Base64 图片）
@@ -34,11 +37,15 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// 初始化 WebSocket（共享 HTTP Server）
+initWebSocket(server);
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('  🍳 家庭点菜系统 - 后端服务');
   console.log(`  Server: http://localhost:${PORT}`);
   console.log(`  API:    http://localhost:${PORT}/api`);
+  console.log(`  WS:     ws://localhost:${PORT}/ws`);
   console.log(`  Data:   SQLite (data/family-menu.db)`);
   console.log('');
 });

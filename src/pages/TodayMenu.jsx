@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { useMenu } from '../context/MenuContext'
+import RecipeDetail from '../components/RecipeDetail'
 
 export default function TodayMenu() {
-  const { todayRecipes, toggleTodayMenu, clearTodayMenu, nickname } = useMenu()
+  const { todayRecipes, toggleTodayMenu, clearTodayMenu, nickname, isInTodayMenu } = useMenu()
+  const [detailRecipe, setDetailRecipe] = useState(null)
 
   // 统计：去除聚合后的重复计数
   const totalDishes = todayRecipes.reduce((sum, r) => sum + (r._nicknames?.length || 1), 0)
@@ -104,7 +107,8 @@ export default function TodayMenu() {
         {todayRecipes.map(recipe => (
           <div
             key={recipe.id}
-            className="flex items-center gap-4 p-4 rounded-2xl transition-colors"
+            className="flex items-center gap-4 p-4 rounded-2xl transition-colors cursor-pointer active:scale-[0.99]"
+            onClick={() => setDetailRecipe(recipe)}
             style={{
               background: 'var(--surface)',
               boxShadow: 'var(--shadow-sm)',
@@ -198,6 +202,16 @@ export default function TodayMenu() {
           </div>
         ))}
       </div>
+
+      {/* 菜谱详情弹窗 */}
+      {detailRecipe && (
+        <RecipeDetail
+          recipe={detailRecipe}
+          onClose={() => setDetailRecipe(null)}
+          onToggle={(id) => { toggleTodayMenu(id); setDetailRecipe(null) }}
+          isInMenu={isInTodayMenu(detailRecipe.id)}
+        />
+      )}
     </div>
   )
 }

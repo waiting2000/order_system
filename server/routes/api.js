@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { broadcast } from '../ws.js';
 
 const router = Router();
 
@@ -61,6 +62,7 @@ router.post('/recipes', (req, res) => {
 
   const recipe = db.prepare('SELECT * FROM recipes WHERE id = ?').get(result.lastInsertRowid);
   recipe.ingredients = JSON.parse(recipe.ingredients || '[]');
+  broadcast('recipe_added', recipe);
   res.status(201).json(recipe);
 });
 
@@ -88,15 +90,15 @@ router.put('/recipes/:id', (req, res) => {
 
   const recipe = db.prepare('SELECT * FROM recipes WHERE id = ?').get(req.params.id);
   recipe.ingredients = JSON.parse(recipe.ingredients || '[]');
+  broadcast('recipe_updated', recipe);
   res.json(recipe);
 });
-
-// 删除菜谱
 router.delete('/recipes/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM recipes WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: '菜谱不存在' });
 
   db.prepare('DELETE FROM recipes WHERE id = ?').run(req.params.id);
+  broadcast('recipe_deleted', { id: Number(req.params.id) });
   res.json({ success: true });
 });
 
@@ -147,6 +149,7 @@ router.post('/orders', (req, res) => {
   `).get(db.prepare('SELECT last_insert_rowid() as id').get().id);
 
   order.ingredients = JSON.parse(order.ingredients || '[]');
+  broadcast('order_added', order);
   res.status(201).json(order);
 });
 
@@ -156,6 +159,7 @@ router.delete('/orders/:id', (req, res) => {
   if (!existing) return res.status(404).json({ error: '该订单不存在' });
 
   db.prepare('DELETE FROM daily_orders WHERE id = ?').run(req.params.id);
+  broadcast('order_removed', { order_id: Number(req.params.id) });
   res.json({ success: true });
 });
 
@@ -168,7 +172,42 @@ router.delete('/orders/recipe/:recipeId', (req, res) => {
 // 清空今日菜单
 router.delete('/orders', (req, res) => {
   db.prepare("DELETE FROM daily_orders WHERE date(created_at) = date('now', 'localtime')").run();
+  broadcast('orders_cleared');
   res.json({ success: true });
 });
+
+// ==================== 历史记录 API ====================
+
+// 获取历史日期列表（去重日期，按日期倒序）
+router.get('/history/dates', (req, res) => {
+  const dates = db.prepare(`
+    SELECT DISTINCT date(created_at) as date
+    FROM daily_orders
+    ORDER BY date DESC
+    LIMIT 90
+  `).all()
+  res.json(dates.map(d => d.date))
+})
+
+// 获取指定日期的点菜记录
+router.get('/history/:date', (req, res) => {
+  const { date } = req.params
+  // 简单校验日期格式 YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: '日期格式错误，应为 YYYY-MM-DD' })
+  }
+  const orders = db.prepare(`
+    SELECT d.id as order_id, r.*, d.created_at as order_time, d.nickname
+    FROM daily_orders d
+    JOIN recipes r ON d.recipe_id = r.id
+    WHERE date(d.created_at) = ?
+    ORDER BY d.id ASC
+  `).all(date)
+  const parsed = orders.map(o => ({
+    ...o,
+    ingredients: JSON.parse(o.ingredients || '[]')
+  }))
+  res.json(parsed)
+})
 
 export default router;
