@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 
 const CATEGORY_EMOJI = {
   '荤菜': '🥩', '素菜': '🥬', '汤类': '🥣',
@@ -11,6 +12,7 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
   const [shareLoading, setShareLoading] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const toast = useToast()
+  const { token } = useAuth()
   // 阻止背景滚动
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -32,7 +34,6 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
   const handleShare = async () => {
     setShareLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/shares', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
