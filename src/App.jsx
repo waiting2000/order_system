@@ -167,7 +167,16 @@ function AppContent() {
   )
 }
 
+import ShareRecipe from './pages/ShareRecipe'
+
+// 检查是否为分享链接
+const isShareRoute = () => {
+  return /^\/share\/[a-f0-9]+/.test(window.location.pathname)
+}
+
 export default function App() {
+  // 分享链接：跳过认证，直接渲染分享页
+  if (isShareRoute()) return <ShareRecipe />
   return (
     <AuthProvider>
       <ToastProvider>

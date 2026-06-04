@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 const CATEGORY_EMOJI = {
   '荤菜': '🥩', '素菜': '🥬', '汤类': '🥣',
@@ -6,6 +6,9 @@ const CATEGORY_EMOJI = {
 }
 
 export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
+  const [shareUrl, setShareUrl] = useState(null)
+  const [shareLoading, setShareLoading] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
   // 阻止背景滚动
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -23,6 +26,33 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
+
+  const handleShare = async () => {
+    setShareLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/shares', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ recipeId: recipe.id }),
+      })
+      if (!res.ok) throw new Error('生成分享链接失败')
+      const data = await res.json()
+      setShareUrl(`${window.location.origin}/share/${data.token}`)
+    } catch {
+      // silently fail, no toast needed for share
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    } catch { /* ignore */ }
+  }
 
   const ingredients = recipe.ingredients || []
 
@@ -194,12 +224,35 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
 
           {/* 底部操作栏 */}
           <div
-            className="shrink-0 px-5 py-4"
+            className="shrink-0 px-5 py-4 space-y-3"
             style={{
               borderTop: '1px solid var(--border-light)',
               background: 'var(--bg)',
             }}
           >
+            {/* 分享链接展示 */}
+            {shareUrl && (
+              <div className="flex items-center gap-2 p-2.5 rounded-xl"
+                style={{ background: 'var(--accent-light)' }}>
+                <input
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                  className="flex-1 bg-transparent text-xs outline-none truncate"
+                  style={{ color: 'var(--accent)' }}
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={shareCopied
+                    ? { background: 'var(--success)', color: '#fff' }
+                    : { background: 'var(--accent)', color: '#fff' }}
+                >
+                  {shareCopied ? '已复制' : '复制'}
+                </button>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={onClose}
@@ -210,6 +263,24 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
                 }}
               >
                 关闭
+              </button>
+              <button
+                onClick={handleShare}
+                disabled={shareLoading}
+                className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
+                style={{ background: 'var(--surface-hover)', color: 'var(--text-secondary)' }}
+                title="分享菜谱"
+              >
+                {shareLoading ? (
+                  <div className="w-4 h-4 border-2 rounded-full animate-spin"
+                    style={{ borderColor: 'var(--text-tertiary)', borderTopColor: 'var(--accent)' }} />
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                  </svg>
+                )}
               </button>
               <button
                 onClick={() => onToggle?.(recipe.id)}

@@ -18,6 +18,7 @@ export default function MenuBrowser({ onGoToday }) {
   const [activeCategory, setActiveCategory] = useState('全部')
   const [search, setSearch] = useState('')
   const [detailRecipe, setDetailRecipe] = useState(null)
+  const [randomRecipes, setRandomRecipes] = useState(null)
 
   const filtered = useMemo(() => {
     let result = activeCategory === '全部'
@@ -35,6 +36,19 @@ export default function MenuBrowser({ onGoToday }) {
   }, [recipes, activeCategory, search])
 
   const todayCount = todayRecipes.length
+
+  // 随机推荐
+  const rollRandom = () => {
+    if (recipes.length === 0) return
+    const pool = [...recipes]
+    const result = []
+    const count = Math.min(3, pool.length)
+    for (let i = 0; i < count; i++) {
+      const idx = Math.floor(Math.random() * pool.length)
+      result.push(pool.splice(idx, 1)[0])
+    }
+    setRandomRecipes(result)
+  }
 
   return (
     <div className="space-y-5">
@@ -65,40 +79,127 @@ export default function MenuBrowser({ onGoToday }) {
         </button>
       )}
 
-      {/* 搜索框 */}
-      <div className="relative">
-        <svg
-          width="17" height="17" viewBox="0 0 24 24" fill="none"
-          stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-        >
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="搜索菜名..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-colors"
-          style={{
-            background: 'var(--surface)',
-            color: 'var(--text-primary)',
-            border: '1.5px solid var(--border)',
-          }}
-        />
-        {search && (
-          <button
-            onClick={() => setSearch('')}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2"
-            style={{ color: 'var(--text-tertiary)' }}
+      {/* 搜索框 + 随机推荐 */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <svg
+            width="17" height="17" viewBox="0 0 24 24" fill="none"
+            stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        )}
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="搜索菜名..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-colors"
+            style={{
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+              border: '1.5px solid var(--border)',
+            }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          )}
+        </div>
+        <button
+          onClick={rollRandom}
+          className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95"
+          style={{
+            background: 'var(--accent)',
+            color: '#fff',
+          }}
+        >
+          <span className="text-base">🎲</span>
+          <span>随机</span>
+        </button>
       </div>
+
+      {/* 随机推荐面板 */}
+      {randomRecipes && (
+        <div
+          className="rounded-2xl p-4 space-y-3"
+          style={{ background: 'var(--accent-light)', border: '1px solid rgba(212,116,60,0.12)' }}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+              🎲 为你推荐
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={rollRandom}
+                className="text-xs font-medium transition-colors"
+                style={{ color: 'var(--accent)' }}
+              >
+                换一批
+              </button>
+              <button
+                onClick={() => setRandomRecipes(null)}
+                className="text-xs transition-colors"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                收起
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {randomRecipes.map(recipe => {
+              const added = isInTodayMenu(recipe.id)
+              return (
+                <div
+                  key={recipe.id}
+                  className="rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97]"
+                  style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}
+                  onClick={() => setDetailRecipe(recipe)}
+                >
+                  <div
+                    className="relative w-full pt-[66%] overflow-hidden"
+                    style={{ background: 'var(--surface-hover)' }}
+                  >
+                    {recipe.image ? (
+                      <img src={recipe.image} alt={recipe.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={e => { e.target.style.display = 'none' }} />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-2xl opacity-30">
+                        {CATEGORY_EMOJI[recipe.category] || '🍽️'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                      {recipe.name}
+                    </p>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleTodayMenu(recipe.id) }}
+                      className="w-full mt-1.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
+                      style={added ? {
+                        background: 'var(--success-light)', color: 'var(--success)',
+                      } : {
+                        background: 'var(--surface-hover)', color: 'var(--text-primary)',
+                      }}
+                    >
+                      {added ? '已加入' : '加入菜单'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 分类标签 */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>

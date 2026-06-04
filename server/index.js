@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRoutes from './routes/api.js';
 import authRoutes from './routes/auth.js';
+import { shareRoutes, sharedRoutes } from './routes/shares.js';
 import db from './db.js';
 import { initWebSocket } from './ws.js';
 
@@ -18,8 +19,14 @@ app.use(express.json({ limit: '50mb' }));
 // Auth routes（无需认证）
 app.use('/api/auth', authRoutes);
 
+// Share public routes（无需认证，需在 apiRoutes 之前加载）
+app.use('/api', sharedRoutes);
+
 // Business API routes（需要认证）
 app.use('/api', apiRoutes);
+
+// Share management routes（需要认证）
+app.use('/api/shares', shareRoutes);
 
 // Serve frontend static files
 const distPath = path.join(__dirname, '..', 'dist');

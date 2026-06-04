@@ -1,9 +1,36 @@
 import { useState } from 'react'
 import { useMenu } from '../context/MenuContext'
+import { useToast } from '../context/ToastContext'
 
 export default function ShoppingList({ onGoMenu }) {
   const { shoppingList, todayRecipes } = useMenu()
   const [checked, setChecked] = useState({})
+  const toast = useToast()
+
+  const handleCopy = async () => {
+    const unchecked = shoppingList.filter(i => !checked[i.name])
+    const done = shoppingList.filter(i => checked[i.name])
+    const lines = ['🛒 今日采购清单', '']
+    if (unchecked.length > 0) {
+      lines.push('--- 待采购 ---')
+      unchecked.forEach(item => {
+        lines.push(item.count > 1 ? `□ ${item.name} ×${item.count}` : `□ ${item.name}`)
+      })
+    }
+    if (done.length > 0) {
+      lines.push('')
+      lines.push('--- 已备齐 ---')
+      done.forEach(item => {
+        lines.push(`✓ ${item.name}`)
+      })
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'))
+      toast.success('已复制采购清单到剪贴板')
+    } catch {
+      toast.error('复制失败，请手动选择复制')
+    }
+  }
 
   const toggleCheck = (name) => {
     setChecked(prev => ({ ...prev, [name]: !prev[name] }))
@@ -92,6 +119,17 @@ export default function ShoppingList({ onGoMenu }) {
             重置清单
           </button>
         )}
+        <button
+          onClick={handleCopy}
+          className="mt-2 ml-3 text-xs font-medium transition-colors inline-flex items-center gap-1"
+          style={{ color: 'var(--accent)' }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          一键复制
+        </button>
       </div>
 
       {/* 来源提示 */}

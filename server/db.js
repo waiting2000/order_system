@@ -56,6 +56,17 @@ db.exec(`
   );
 `);
 
+// Shares table for recipe sharing
+db.exec(`
+  CREATE TABLE IF NOT EXISTS shares (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recipe_id INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+  );
+`);
+
 // Seed default recipes if table is empty
 const count = db.prepare('SELECT COUNT(*) as cnt FROM recipes').get();
 if (count.cnt === 0) {
