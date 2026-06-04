@@ -19,14 +19,14 @@ app.use(express.json({ limit: '50mb' }));
 // Auth routes（无需认证）
 app.use('/api/auth', authRoutes);
 
-// Share public routes（无需认证，需在 apiRoutes 之前加载）
+// Share public routes（无需认证）
 app.use('/api', sharedRoutes);
+
+// Share management routes（需要认证，必须在 apiRoutes 之前，否则会被 apiRoutes 的 authMiddleware 拦截）
+app.use('/api/shares', shareRoutes);
 
 // Business API routes（需要认证）
 app.use('/api', apiRoutes);
-
-// Share management routes（需要认证）
-app.use('/api/shares', shareRoutes);
 
 // Serve frontend static files
 const distPath = path.join(__dirname, '..', 'dist');

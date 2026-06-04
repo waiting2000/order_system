@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useToast } from '../context/ToastContext'
 
 const CATEGORY_EMOJI = {
   '荤菜': '🥩', '素菜': '🥬', '汤类': '🥣',
@@ -9,6 +10,7 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
   const [shareUrl, setShareUrl] = useState(null)
   const [shareLoading, setShareLoading] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
+  const toast = useToast()
   // 阻止背景滚动
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -39,8 +41,8 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
       if (!res.ok) throw new Error('生成分享链接失败')
       const data = await res.json()
       setShareUrl(`${window.location.origin}/share/${data.token}`)
-    } catch {
-      // silently fail, no toast needed for share
+    } catch (err) {
+      toast.error('分享链接生成失败，请重试')
     } finally {
       setShareLoading(false)
     }
@@ -49,9 +51,23 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl)
-      setShareCopied(true)
-      setTimeout(() => setShareCopied(false), 2000)
-    } catch { /* ignore */ }
+    } catch {
+      // 降级：HTTP 环境下用 execCommand
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = shareUrl
+        ta.style.position = 'fixed'
+        ta.style.left = '-9999px'
+        ta.style.top = '-9999px'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      } catch { /* ignore */ }
+    }
+    setShareCopied(true)
+    setTimeout(() => setShareCopied(false), 2000)
   }
 
   const ingredients = recipe.ingredients || []

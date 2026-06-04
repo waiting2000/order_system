@@ -24,11 +24,28 @@ export default function ShoppingList({ onGoMenu }) {
         lines.push(`✓ ${item.name}`)
       })
     }
+    const text = lines.join('\n')
     try {
-      await navigator.clipboard.writeText(lines.join('\n'))
+      // 优先使用 Clipboard API（需要 HTTPS）
+      await navigator.clipboard.writeText(text)
       toast.success('已复制采购清单到剪贴板')
     } catch {
-      toast.error('复制失败，请手动选择复制')
+      // 降级：HTTP 环境下用 execCommand
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = text
+        ta.style.position = 'fixed'
+        ta.style.left = '-9999px'
+        ta.style.top = '-9999px'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        toast.success('已复制采购清单到剪贴板')
+      } catch {
+        toast.error('复制失败，请手动选择复制')
+      }
     }
   }
 
