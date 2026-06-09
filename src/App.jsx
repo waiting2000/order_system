@@ -17,6 +17,7 @@ import Login from './pages/Login'
 import PreferenceDialog from './components/PreferenceDialog'
 import HomePage from './pages/HomePage'
 import NoticeBoard from './pages/NoticeBoard'
+import ProfilePage from './pages/ProfilePage'
 import ShareRecipe from './pages/ShareRecipe'
 
 // 检查是否为分享链接
@@ -223,6 +224,9 @@ function AppContent() {
       )}
       {currentApp === 'notice' && (
         <NoticeBoard onBack={() => setCurrentApp(null)} />
+      )}
+      {currentApp === 'profile' && (
+        <ProfilePage onBack={() => setCurrentApp(null)} />
       )}
     </>
   )

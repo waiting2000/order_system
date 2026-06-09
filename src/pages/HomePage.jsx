@@ -19,6 +19,15 @@ const APPS = [
     border: '#AACFEE',
     accent: '#3A82C4',
   },
+  {
+    key: 'profile',
+    name: '我的',
+    desc: '个人信息、饮食偏好、版本更新日志',
+    emoji: '👤',
+    color: '#EDF5ED',
+    border: '#A8D5A8',
+    accent: '#739D73',
+  },
 ]
 
 export default function HomePage({ onOpenApp }) {

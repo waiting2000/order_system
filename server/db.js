@@ -133,6 +133,17 @@ db.exec(`
   );
 `);
 
+// 版本更新日志表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS version_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    version TEXT NOT NULL,
+    release_date TEXT NOT NULL,
+    changes TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+`);
+
 // Seed default recipes if table is empty
 const count = db.prepare('SELECT COUNT(*) as cnt FROM recipes').get();
 if (count.cnt === 0) {
@@ -188,6 +199,49 @@ if (count.cnt === 0) {
 
   insertMany(defaults);
   console.log('  ✓ 已初始化 4 道默认菜谱');
+}
+
+// 种子版本更新日志（仅在表为空时插入）
+const versionCount = db.prepare('SELECT COUNT(*) as cnt FROM version_logs').get();
+if (versionCount.cnt === 0) {
+  const insertVersion = db.prepare(`
+    INSERT INTO version_logs (version, release_date, changes) VALUES (?, ?, ?)
+  `);
+
+  const versions = [
+    {
+      version: 'v1.0',
+      releaseDate: '2026-06-01',
+      changes: JSON.stringify([
+        '系统上线：点单、备忘两大核心模块',
+        '菜谱管理（CRUD + 导入导出）',
+        '每日点单 + 周计划编排',
+        '投票功能（提名 + 投票 + 中选入菜）',
+        '饮食偏好（过敏原/忌口标记）',
+        '家庭公告 + 个人待办',
+        'WebSocket 实时同步',
+        '用户注册/登录（JWT 认证）'
+      ])
+    },
+    {
+      version: 'v1.1',
+      releaseDate: '2026-06-09',
+      changes: JSON.stringify([
+        '新增「我的」页面：展示个人信息与饮食偏好摘要',
+        '版本更新日志时间线展示',
+        '优化应用卡片布局'
+      ])
+    }
+  ];
+
+  const insertManyVersions = db.transaction((items) => {
+    for (const v of items) {
+      insertVersion.run(v.version, v.releaseDate, v.changes);
+    }
+  });
+
+  insertManyVersions(versions);
+  console.log('  ✓ 已初始化 2 条版本更新日志');
 }
 
 export default db;

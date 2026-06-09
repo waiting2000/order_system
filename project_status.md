@@ -1,6 +1,6 @@
 # 家年华 · 项目现状文档
 
-> 最后更新：2026-06-09 | 版本：v1.0
+> 最后更新：2026-06-09 | 版本：v1.1
 
 ---
 
@@ -23,10 +23,10 @@
 │              浏览器客户端                  │
 │  React 18 + Vite 5 + Tailwind CSS        │
 │  ┌─────────┐ ┌─────────┐ ┌──────────┐   │
-│  │  点单 App │ │ 备忘 App │ │ (扩展...) │   │
-│  └────┬────┘ └────┬────┘ └──────────┘   │
-│       │           │                      │
-│  ┌────┴───────────┴──────────────────┐   │
+│  │  点单 App │ │ 备忘 App │ │ 我的 App │   │
+│  └────┬────┘ └────┬────┘ └────┬─────┘   │
+│       │           │            │         │
+│  ┌────┴───────────┴────────────┴─────┐   │
 │  │       Context 层（状态管理）        │   │
 │  │  Auth / Menu / Plan / Vote / WS   │   │
 │  └────────────────┬──────────────────┘   │
@@ -38,7 +38,8 @@
 │  ┌───────────────┴───────────────────┐   │
 │  │          路由层 (routes/)          │   │
 │  │  auth / api / shares / plans /    │   │
-│  │  votes / preferences / notices    │   │
+│  │  votes / preferences / notices /  │   │
+│  │  profile / version-logs           │   │
 │  └───────────────┬───────────────────┘   │
 │  ┌───────────────┴───────────────────┐   │
 │  │       中间件 (middleware/)         │   │
@@ -84,6 +85,7 @@
 |---|---|---|---|
 | `menu` | 点单 | ✅ 已完成 | 核心应用，含 7 个 tab（菜单/今日/计划/投票/记录/采购/菜谱） |
 | `notice` | 备忘 | ✅ 已完成 | 家庭公告 + 个人待办事项 |
+| `profile` | 我的 | 🆕 新增 | 个人中心：用户信息 + 版本更新日志 |
 
 ### 2.2 点单子应用 Tab 详解
 
@@ -105,7 +107,15 @@
 | 个人待办 | ✅ | 仅自己可见的待办事项，勾选完成/取消完成/删除 |
 | 权限控制 | ✅ | 仅作者可删除自己的公告/待办；仅所有者可切换待办状态 |
 
-### 2.4 通用功能
+### 2.4 我的子应用功能
+
+| 功能 | 状态 | 描述 |
+|---|---|---|
+| 用户信息展示 | 🆕 | 展示用户名、昵称、注册时间、饮食偏好摘要（过敏原/忌口/饮食类型） |
+| 版本更新日志 | 🆕 | 时间线形式展示应用版本更新记录，含版本号、发布日期、变更内容列表 |
+| 退出登录 | 🆕 | 页脚提供退出登录入口 |
+
+### 2.5 通用功能
 
 | 功能 | 状态 | 描述 |
 |---|---|---|
@@ -117,12 +127,12 @@
 | Toast 通知 | ✅ | 全局轻提示组件（success/error/info） |
 | 自动重连 | ✅ | WebSocket 断线指数退避重连（1s→30s max） |
 
-### 2.5 待开发功能
+### 2.6 待开发功能
 
 | 功能 | 优先级 | 说明 |
 |---|---|---|
 | 更多子应用 | 中 | 如家庭相册、记账、日程等 |
-| 用户头像 | 低 | 当前仅显示昵称 |
+| 用户头像上传 | 低 | 当前仅显示昵称，无头像上传功能 |
 | 分享过期机制 | 中 | 当前分享链接永久有效，无清理 |
 | 数据备份/恢复 | 中 | SQLite 文件手动管理，无自动备份 |
 | 分页/无限滚动 | 低 | 当前菜谱全量加载 |
@@ -155,7 +165,7 @@
 │
 ├── server/                 # 后端代码
 │   ├── index.js            # 服务入口（Express + WS 初始化）
-│   ├── db.js               # 数据库初始化、建表、种子数据
+│   ├── db.js               # 数据库初始化、建表、种子数据（含 version_logs）
 │   ├── ws.js               # WebSocket 连接管理与广播
 │   ├── middleware/
 │   │   └── auth.js         # JWT 生成与验证中间件
@@ -166,11 +176,12 @@
 │       ├── plans.js        # 周计划编排
 │       ├── votes.js        # 投票完整流程
 │       ├── preferences.js  # 用户饮食偏好
-│       └── notices.js      # 家庭公告 + 个人待办
+│       ├── notices.js      # 家庭公告 + 个人待办
+│       └── profile.js      # 🆕 个人中心（用户信息汇总 + 版本更新日志）
 │
 ├── src/                    # 前端代码
 │   ├── main.jsx            # React 挂载入口
-│   ├── App.jsx             # 顶层应用：Auth 守卫 + Hub 状态机
+│   ├── App.jsx             # 顶层应用：Auth 守卫 + Hub 状态机（含 profile 路由）
 │   ├── index.css           # 全局样式（CSS 变量 + Tailwind + 滚动条）
 │   ├── context/            # React Context 状态管理
 │   │   ├── AuthContext.jsx       # 认证状态（登录/注册/登出/Token管理）
@@ -181,7 +192,7 @@
 │   │   ├── PlanContext.jsx       # 周计划管理
 │   │   └── VoteContext.jsx       # 投票管理
 │   ├── pages/              # 页面组件
-│   │   ├── HomePage.jsx          # Hub 首页（应用卡片）
+│   │   ├── HomePage.jsx          # Hub 首页（应用卡片，含"我的"入口）
 │   │   ├── Login.jsx             # 登录/注册页
 │   │   ├── MenuBrowser.jsx       # 菜单浏览（搜索+分类筛选+点菜）
 │   │   ├── TodayMenu.jsx         # 今日菜单
@@ -191,6 +202,7 @@
 │   │   ├── ShoppingList.jsx      # 采购清单
 │   │   ├── RecipeManager.jsx     # 菜谱管理（CRUD+导入导出）
 │   │   ├── NoticeBoard.jsx       # 备忘（公告+待办）
+│   │   ├── ProfilePage.jsx       # 🆕 我的（用户信息 + 版本更新日志）
 │   │   └── ShareRecipe.jsx       # 菜谱分享查看页（免登录）
 │   └── components/         # 通用组件
 │       ├── PreferenceDialog.jsx  # 饮食偏好设置弹窗
@@ -237,6 +249,8 @@ users ──1:1── user_preferences
   ├── notices ── (via author nickname)
   │
   └── shares ──N:1── recipes
+
+version_logs ── (独立表，无外键关联)
 ```
 
 ### 4.2 recipes（菜谱表）
@@ -362,6 +376,28 @@ users ──1:1── user_preferences
 
 **注意：** notices 表在 `server/routes/notices.js` 中动态建表（`CREATE TABLE IF NOT EXISTS`），而非在 `db.js` 中统一管理。
 
+### 4.12 version_logs（版本更新日志表）🆕
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| id | INTEGER | PK | 自增主键 |
+| version | TEXT | ✓ | 版本号（如 `v1.1`） |
+| release_date | TEXT | ✓ | 发布日期（YYYY-MM-DD） |
+| changes | TEXT | ✓ | 更新内容，JSON 数组字符串，如 `["新增我的页面","优化性能"]` |
+| created_at | TEXT | | 记录创建时间 |
+
+**业务规则：**
+- 按 `release_date DESC` 排序展示，最新的排在最前
+- 在 `db.js` 中统一建表，建表时自动插入当前版本的种子记录
+- 后续版本发布时在 `db.js` 中追加 INSERT 语句作为数据迁移
+
+**种子数据：**
+```sql
+INSERT INTO version_logs (version, release_date, changes) VALUES
+('v1.0', '2026-06-01', '["系统上线：点单、备忘两大核心模块","菜谱管理（CRUD + 导入导出）","每日点单 + 周计划编排","投票功能（提名 + 投票 + 中选入菜）","饮食偏好（过敏原/忌口标记）","家庭公告 + 个人待办","WebSocket 实时同步","用户注册/登录（JWT 认证）"]'),
+('v1.1', '2026-06-09', '["新增「我的」页面：展示个人信息与饮食偏好摘要","版本更新日志时间线展示","优化应用卡片布局"]');
+```
+
 ---
 
 ## 五、已实现接口清单
@@ -467,7 +503,64 @@ users ──1:1── user_preferences
 | PATCH | `/api/notices/:id/toggle` | — | `Notice` | 切换待办完成状态（仅所有者） |
 | DELETE | `/api/notices/:id` | — | `{ ok: true }` | 删除（仅作者） |
 
-### 5.10 WebSocket 事件清单
+### 5.10 个人中心接口（/api/profile）🆕 — 需认证
+
+| 方法 | 路径 | 入参 | 出参 | 说明 |
+|---|---|---|---|---|
+| GET | `/api/profile` | — | `Profile` | 获取当前用户完整档案（含偏好摘要） |
+
+**出参 Profile 结构：**
+```json
+{
+  "id": 1,
+  "username": "zhangsan",
+  "nickname": "张三",
+  "createdAt": "2026-06-01 12:00",
+  "preferences": {
+    "allergies": ["花生", "虾"],
+    "dislikes": ["香菜"],
+    "dietaryType": ""
+  }
+}
+```
+
+**业务规则：**
+- 用户信息从 `users` 表查询
+- 偏好信息从 `user_preferences` 表 LEFT JOIN 查询（用户注册时自动创建空偏好记录，始终有值）
+- 仅返回当前登录用户自己的信息，无权限查看他人
+
+### 5.11 版本更新日志接口（/api/version-logs）🆕 — 需认证
+
+| 方法 | 路径 | 入参 | 出参 | 说明 |
+|---|---|---|---|---|
+| GET | `/api/version-logs` | — | `VersionLog[]` | 获取全部版本更新日志，按 `release_date DESC` 排序 |
+
+**出参 VersionLog 结构：**
+```json
+[
+  {
+    "id": 2,
+    "version": "v1.1",
+    "releaseDate": "2026-06-09",
+    "changes": ["新增「我的」页面：展示个人信息与饮食偏好摘要", "版本更新日志时间线展示", "优化应用卡片布局"],
+    "createdAt": "2026-06-09 12:00"
+  },
+  {
+    "id": 1,
+    "version": "v1.0",
+    "releaseDate": "2026-06-01",
+    "changes": ["系统上线：点单、备忘两大核心模块", "..."],
+    "createdAt": "2026-06-01 10:00"
+  }
+]
+```
+
+**业务规则：**
+- 无需分页，全量返回（版本数量有限，预期不超过 100 条）
+- `changes` 字段在库中存储为 JSON 字符串，返回时 `JSON.parse` 为数组
+- 该接口不涉及增删改，版本更新日志通过 `db.js` 种子数据或手动 SQL 维护
+
+### 5.12 WebSocket 事件清单
 
 WebSocket 连接路径：`ws://host:port/ws?token=<jwt_token>`
 
@@ -494,12 +587,12 @@ WebSocket 连接路径：`ws://host:port/ws?token=<jwt_token>`
 
 | 类别 | 规范 | 示例 |
 |---|---|---|
-| React 组件文件 | PascalCase | `MenuBrowser.jsx`, `HomePage.jsx` |
+| React 组件文件 | PascalCase | `MenuBrowser.jsx`, `HomePage.jsx`, `ProfilePage.jsx` |
 | Context 文件 | PascalCase + Context 后缀 | `AuthContext.jsx`, `MenuContext.jsx` |
-| 服务端路由文件 | 小写，按业务命名 | `api.js`, `votes.js`, `notices.js` |
+| 服务端路由文件 | 小写，按业务命名 | `api.js`, `votes.js`, `notices.js`, `profile.js` |
 | CSS 变量 | kebab-case，前缀 `--` | `--bg`, `--text-primary`, `--accent` |
-| API 路径 | RESTful 风格 | `/api/recipes`, `/api/votes/:id` |
-| 数据库表名 | snake_case | `daily_orders`, `weekly_plans`, `user_preferences` |
+| API 路径 | RESTful 风格 | `/api/recipes`, `/api/votes/:id`, `/api/profile` |
+| 数据库表名 | snake_case | `daily_orders`, `weekly_plans`, `version_logs` |
 | 数据库字段名 | snake_case | `recipe_id`, `created_at`, `max_votes_per_user` |
 | JSON 字段 | camelCase（前端接收后） | 服务端 Snake → 前端自动为 Camel |
 
@@ -577,9 +670,10 @@ export function createRecipe(data) { ... }
 
 - WAL 模式 + 外键约束开启
 - 时间默认使用 `datetime('now', 'localtime')`
-- 数组字段（ingredients、allergies、dislikes）使用 JSON 字符串存储
+- 数组字段（ingredients、allergies、dislikes、changes）使用 JSON 字符串存储
 - 菜谱分类和难度在前端以常量维护，后端不做枚举约束
-- 种子数据：首次启动时自动插入 4 道默认菜谱
+- 种子数据：首次启动时自动插入 4 道默认菜谱 + 当前版本的更新日志记录
+- 版本更新日志通过种子数据维护，随版本发布在 `db.js` 中追加 INSERT 语句
 
 ---
 
@@ -601,6 +695,8 @@ export function createRecipe(data) { ... }
 | 未实现分页 | 菜谱列表全量返回，数据量大时性能下降 |
 | 采购清单无持久化 | 每次基于今日点单实时计算，不保存历史采购记录 |
 | 投票不支持图片 | 自定义候选项仅文本 |
+| 无用户头像上传 | 当前仅显示昵称，无头像上传/存储功能 |
+| 版本日志无管理后台 | version_logs 通过 db.js 种子数据维护，无前端管理界面 |
 
 ### 7.3 代码质量问题
 
@@ -658,12 +754,54 @@ npm start         # 构建 + 启动后端（静态文件 + API 一体）
 | 酸辣汤 | 汤类 | 简单 | 20 分钟 |
 | 蛋炒饭 | 主食 | 简单 | 10 分钟 |
 
-### 8.3 扩展规划建议
+同时插入版本更新日志记录：
+
+| 版本 | 日期 | 内容摘要 |
+|---|---|---|
+| v1.0 | 2026-06-01 | 系统上线：点单、备忘两大核心模块，菜谱管理，投票，饮食偏好等 |
+| v1.1 | 2026-06-09 | 新增「我的」页面，版本更新日志展示 |
+
+### 8.3 "我的"页面实现要点 🆕
+
+**前端组件 `src/pages/ProfilePage.jsx`：**
+- 接受 `{ onBack }` prop，顶部栏包含返回按钮和"我的"标题
+- **用户信息卡片**：头像占位（圆形色块+昵称首字）、用户名、昵称、注册时间
+- **饮食偏好摘要卡片**：过敏原标签（红色系）、忌口标签（橙色系）、饮食类型（如有）
+- **版本更新日志**：时间线样式，每条记录展示版本号、发布日期、变更列表
+- 页面底部提供"退出登录"按钮（调用 `useAuth().logout()`）
+- 数据通过 `useEffect` 并行请求 `/api/profile` 和 `/api/version-logs`
+
+**后端路由 `server/routes/profile.js`：**
+- 使用 `authMiddleware` 保护所有接口
+- GET `/api/profile`：JOIN users + user_preferences 查询当前用户完整档案
+- GET `/api/version-logs`：查询 version_logs 表全量返回
+
+**HomePage.jsx APPS 卡片配置：**
+```js
+{
+  key: 'profile',
+  name: '我的',
+  desc: '个人信息、版本更新',
+  emoji: '👤',
+  color: '#F5F0FF',
+  border: '#D4C5F0',
+  accent: '#7C5CBF',
+}
+```
+
+**App.jsx 路由注册：**
+```jsx
+{currentApp === 'profile' && (
+  <ProfilePage onBack={() => setCurrentApp(null)} />
+)}
+```
+
+### 8.4 扩展规划建议
 
 基于当前架构，建议按以下顺序扩展：
 
 1. **数据安全**：配置 JWT_SECRET 环境变量、增加数据库定期备份
-2. **体验完善**：分享过期清理、分页加载
+2. **体验完善**：分享过期清理、分页加载、用户头像上传
 3. **新子应用**：家庭相册、记账本、日程
 4. **工程化**：TypeScript 迁移、单元测试、CI/CD
 5. **运维保障**：日志系统、健康检查、进程守护
