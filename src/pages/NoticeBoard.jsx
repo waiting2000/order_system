@@ -1,17 +1,23 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 
-function apiCall(path, opts = {}) {
-  const token = localStorage.getItem('token')
-  return fetch(path, {
-    headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : '' },
-    ...opts,
-  }).then(r => r.json())
-}
-
 export default function NoticeBoard({ onBack }) {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const me = user?.nickname || user?.username || '我'
+
+  // 构建认证请求头，与 MenuContext 等保持一致的风格
+  const authHeaders = useMemo(() => ({
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }), [token])
+
+  /** 通用 API 调用封装 */
+  const apiCall = useCallback((path, opts = {}) => {
+    return fetch(path, {
+      headers: authHeaders,
+      ...opts,
+    }).then(r => r.json())
+  }, [authHeaders])
   const [tab, setTab] = useState('public') // 'public' | 'todo'
   const [notices, setNotices] = useState([])
   const [todos, setTodos] = useState([])
@@ -33,7 +39,7 @@ export default function NoticeBoard({ onBack }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [apiCall])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -46,6 +52,8 @@ export default function NoticeBoard({ onBack }) {
         method: 'POST',
         body: JSON.stringify({ content: input.trim(), type: tab }),
       })
+      // 校验响应有效性，避免错误信息被当作正常数据添加到列表
+      if (item.error) return
       if (tab === 'public') setNotices(prev => [item, ...prev])
       else setTodos(prev => [item, ...prev])
       setInput('')
