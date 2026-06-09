@@ -5,6 +5,10 @@ import { fileURLToPath } from 'url';
 import apiRoutes from './routes/api.js';
 import authRoutes from './routes/auth.js';
 import { shareRoutes, sharedRoutes } from './routes/shares.js';
+import preferencesRoutes from './routes/preferences.js';
+import plansRoutes from './routes/plans.js';
+import votesRoutes from './routes/votes.js';
+import noticesRoutes from './routes/notices.js';
 import db from './db.js';
 import { initWebSocket } from './ws.js';
 
@@ -24,6 +28,18 @@ app.use('/api', sharedRoutes);
 
 // Share management routes（需要认证，必须在 apiRoutes 之前，否则会被 apiRoutes 的 authMiddleware 拦截）
 app.use('/api/shares', shareRoutes);
+
+// User preferences routes（需要认证）
+app.use('/api', preferencesRoutes);
+
+// Weekly plans routes（需要认证）
+app.use('/api', plansRoutes);
+
+// Voting routes（需要认证）
+app.use('/api', votesRoutes);
+
+// Notices routes（需要认证）
+app.use('/api', noticesRoutes);
 
 // Business API routes（需要认证）
 app.use('/api', apiRoutes);
@@ -49,7 +65,7 @@ initWebSocket(server);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('');
-  console.log('  🍳 家庭点菜系统 - 后端服务');
+  console.log('  🏠 家年华 - 家庭综合应用');
   console.log(`  Server: http://localhost:${PORT}`);
   console.log(`  API:    http://localhost:${PORT}/api`);
   console.log(`  WS:     ws://localhost:${PORT}/ws`);

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
+import { usePreferences } from '../context/PreferenceContext'
+import AllergyBadge from './AllergyBadge'
 
 const CATEGORY_EMOJI = {
   '荤菜': '🥩', '素菜': '🥬', '汤类': '🥣',
@@ -13,6 +15,7 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
   const [shareCopied, setShareCopied] = useState(false)
   const toast = useToast()
   const { token } = useAuth()
+  const { preferences, getAllergens } = usePreferences()
   // 阻止背景滚动
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -184,6 +187,13 @@ export default function RecipeDetail({ recipe, onClose, onToggle, isInMenu }) {
                 难度：{recipe.difficulty}
               </span>
             </div>
+
+            {/* 过敏警告 */}
+            {getAllergens(ingredients).length > 0 && (
+              <div className="mb-4">
+                <AllergyBadge recipeIngredients={ingredients} userAllergies={preferences.allergies} />
+              </div>
+            )}
 
             {/* 食材清单 */}
             {ingredients.length > 0 && (

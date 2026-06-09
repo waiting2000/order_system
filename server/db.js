@@ -67,6 +67,72 @@ db.exec(`
   );
 `);
 
+// Weekly meal plans
+db.exec(`
+  CREATE TABLE IF NOT EXISTS weekly_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    week_start TEXT NOT NULL,
+    day_of_week INTEGER NOT NULL,
+    recipe_id INTEGER NOT NULL,
+    created_by TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
+    UNIQUE(week_start, day_of_week)
+  );
+`);
+
+// Voting tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    max_votes_per_user INTEGER DEFAULT 3,
+    closes_at TEXT,
+    status TEXT DEFAULT 'active',
+    created_by TEXT NOT NULL,
+    winner_recipe_id INTEGER,
+    winner_added_to_menu INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (winner_recipe_id) REFERENCES recipes(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS vote_candidates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vote_id INTEGER NOT NULL,
+    recipe_id INTEGER,
+    custom_name TEXT DEFAULT '',
+    added_by TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (vote_id) REFERENCES votes(id) ON DELETE CASCADE,
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS vote_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vote_id INTEGER NOT NULL,
+    candidate_id INTEGER NOT NULL,
+    nickname TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (vote_id) REFERENCES votes(id) ON DELETE CASCADE,
+    FOREIGN KEY (candidate_id) REFERENCES vote_candidates(id) ON DELETE CASCADE,
+    UNIQUE(vote_id, candidate_id, nickname)
+  );
+`);
+
+// User dietary preferences
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE,
+    allergies TEXT DEFAULT '[]',
+    dislikes TEXT DEFAULT '[]',
+    dietary_type TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+`);
+
 // Seed default recipes if table is empty
 const count = db.prepare('SELECT COUNT(*) as cnt FROM recipes').get();
 if (count.cnt === 0) {

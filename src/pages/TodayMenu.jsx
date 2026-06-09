@@ -1,10 +1,42 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useMenu } from '../context/MenuContext'
+import { useAuth } from '../context/AuthContext'
+import { useVote } from '../context/VoteContext'
+import { usePreferences } from '../context/PreferenceContext'
 import RecipeDetail from '../components/RecipeDetail'
+import VoteBanner from '../components/VoteBanner'
+import AllergyBadge from '../components/AllergyBadge'
 
 export default function TodayMenu() {
   const { todayRecipes, toggleTodayMenu, clearTodayMenu, nickname, isInTodayMenu } = useMenu()
+  const { token } = useAuth()
+  const { fetchVotes } = useVote()
+  const { preferences, getAllergens } = usePreferences()
   const [detailRecipe, setDetailRecipe] = useState(null)
+  const [todayPlan, setTodayPlan] = useState(null)
+
+  // Fetch today's plan reminder
+  const authHeaders = useCallback(() => ({
+    headers: { Authorization: `Bearer ${token}` }
+  }), [token])
+
+  useEffect(() => {
+    if (!token) return
+    fetch('/api/plans/today', authHeaders())
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.plan) {
+          // Check if already in today's menu
+          setTodayPlan(data.plan);
+        } else {
+          setTodayPlan(null);
+        }
+      })
+      .catch(() => setTodayPlan(null));
+
+    // Also refresh votes
+    fetchVotes();
+  }, [token, fetchVotes])
 
   // 统计：去除聚合后的重复计数
   const totalDishes = todayRecipes.reduce((sum, r) => sum + (r._nicknames?.length || 1), 0)
@@ -41,6 +73,37 @@ export default function TodayMenu() {
 
   return (
     <div className="space-y-6">
+      {/* 今日计划提醒 */}
+      {todayPlan && !todayRecipes.some(r => r.id === todayPlan.recipe_id) && (
+        <div
+          className="rounded-2xl p-4 flex items-start gap-3"
+          style={{
+            background: 'var(--accent-light)',
+            border: '1px solid rgba(212, 116, 60, 0.15)',
+          }}
+        >
+          <span className="text-xl">📅</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+              今天的计划是「{todayPlan.name}」
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              本周菜单计划中安排了这道菜，去「菜单」页找到它加入今日菜单吧
+            </p>
+            {todayPlan.ingredients?.length > 0 && (
+              <AllergyBadge
+                recipeIngredients={todayPlan.ingredients}
+                userAllergies={preferences.allergies}
+                compact
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 投票横幅 */}
+      <VoteBanner />
+
       {/* 汇总卡片 */}
       <div
         className="rounded-2xl p-5"
@@ -169,10 +232,17 @@ export default function TodayMenu() {
                 </span>
               </div>
               {recipe.ingredients.length > 0 && (
-                <p className="text-xs mt-1.5 truncate" style={{ color: 'var(--text-tertiary)' }}>
-                  {recipe.ingredients.slice(0, 5).join('、')}
-                  {recipe.ingredients.length > 5 ? '...' : ''}
-                </p>
+                <>
+                  <p className="text-xs mt-1.5 truncate" style={{ color: 'var(--text-tertiary)' }}>
+                    {recipe.ingredients.slice(0, 5).join('、')}
+                    {recipe.ingredients.length > 5 ? '...' : ''}
+                  </p>
+                  <AllergyBadge
+                    recipeIngredients={recipe.ingredients}
+                    userAllergies={preferences.allergies}
+                    compact
+                  />
+                </>
               )}
             </div>
 

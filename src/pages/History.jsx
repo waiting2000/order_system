@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useVote } from '../context/VoteContext'
 import { useToast } from '../context/ToastContext'
 
 const DIFF_EMOJI = { '简单': '🟢', '中等': '🟡', '困难': '🔴' }
@@ -7,6 +8,7 @@ const DIFF_EMOJI = { '简单': '🟢', '中等': '🟡', '困难': '🔴' }
 export default function History() {
   const { token } = useAuth()
   const toast = useToast()
+  const { closedVotes, fetchVotes } = useVote()
 
   const [dates, setDates] = useState([])
   const [loading, setLoading] = useState(true)
@@ -34,8 +36,11 @@ export default function History() {
   }, [authHeaders, toast])
 
   useEffect(() => {
-    if (token) loadDates()
-  }, [token, loadDates])
+    if (token) {
+      loadDates()
+      fetchVotes()
+    }
+  }, [token, loadDates, fetchVotes])
 
   // 展开/折叠
   const toggleDate = useCallback(async (date) => {

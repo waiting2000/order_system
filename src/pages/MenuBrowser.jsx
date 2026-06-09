@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useMenu, CATEGORIES } from '../context/MenuContext'
+import { usePreferences } from '../context/PreferenceContext'
 import RecipeDetail from '../components/RecipeDetail'
+import AllergyBadge from '../components/AllergyBadge'
+import VoteBanner from '../components/VoteBanner'
 
 const CATEGORY_EMOJI = {
   '荤菜': '🥩',
@@ -15,6 +18,7 @@ const CATEGORY_EMOJI = {
 
 export default function MenuBrowser({ onGoToday }) {
   const { recipes, todayRecipes, toggleTodayMenu, isInTodayMenu } = useMenu()
+  const { preferences, getAllergens } = usePreferences()
   const [activeCategory, setActiveCategory] = useState('全部')
   const [search, setSearch] = useState('')
   const [detailRecipe, setDetailRecipe] = useState(null)
@@ -78,6 +82,9 @@ export default function MenuBrowser({ onGoToday }) {
           </svg>
         </button>
       )}
+
+      {/* 活跃投票横幅 */}
+      <VoteBanner />
 
       {/* 搜索框 + 随机推荐 */}
       <div className="flex gap-2">
@@ -323,6 +330,13 @@ export default function MenuBrowser({ onGoToday }) {
                       <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--danger)' }}/>
                     )}
                   </div>
+
+                  {/* 过敏标记 */}
+                  {getAllergens(recipe.ingredients).length > 0 && (
+                    <div className="mb-2">
+                      <AllergyBadge recipeIngredients={recipe.ingredients} userAllergies={preferences.allergies} compact />
+                    </div>
+                  )}
 
                   {/* 点菜按钮 */}
                   <button

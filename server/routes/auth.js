@@ -29,8 +29,12 @@ router.post('/register', (req, res) => {
     'INSERT INTO users (username, password_hash, nickname) VALUES (?, ?, ?)'
   ).run(username, passwordHash, nickname);
 
-  const user = db.prepare('SELECT id, username, nickname FROM users WHERE id = ?').get(result.lastInsertRowid);
+  const userId = result.lastInsertRowid;
+  const user = db.prepare('SELECT id, username, nickname FROM users WHERE id = ?').get(userId);
   const token = generateToken(user);
+
+  // Auto-create empty dietary preferences for new user
+  db.prepare('INSERT INTO user_preferences (user_id) VALUES (?)').run(userId);
 
   res.status(201).json({ token, user });
 });
