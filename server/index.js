@@ -10,6 +10,7 @@ import plansRoutes from './routes/plans.js';
 import votesRoutes from './routes/votes.js';
 import noticesRoutes from './routes/notices.js';
 import profileRoutes from './routes/profile.js';
+import mallRoutes from './routes/mall.js';
 import db from './db.js';
 import { initWebSocket } from './ws.js';
 
@@ -44,6 +45,9 @@ app.use('/api', noticesRoutes);
 
 // Profile & version-logs routes（需要认证）
 app.use('/api', profileRoutes);
+
+// Mall routes（需要认证）
+app.use('/api', mallRoutes);
 
 // Business API routes（需要认证）
 app.use('/api', apiRoutes);

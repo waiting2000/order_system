@@ -28,6 +28,15 @@ const APPS = [
     border: '#A8D5A8',
     accent: '#739D73',
   },
+  {
+    key: 'mall',
+    name: '商城',
+    desc: '积分兑换、家务券、休闲券',
+    emoji: '🏪',
+    color: '#FFF5EB',
+    border: '#F5C99A',
+    accent: '#D48A3C',
+  },
 ]
 
 export default function HomePage({ onOpenApp }) {

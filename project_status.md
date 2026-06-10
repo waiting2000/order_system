@@ -1,6 +1,6 @@
 # 家年华 · 项目现状文档
 
-> 最后更新：2026-06-09 | 版本：v1.1
+> 最后更新：2026-06-10 | 版本：v1.3
 
 ---
 
@@ -22,9 +22,9 @@
 ┌─────────────────────────────────────────┐
 │              浏览器客户端                  │
 │  React 18 + Vite 5 + Tailwind CSS        │
-│  ┌─────────┐ ┌─────────┐ ┌──────────┐   │
-│  │  点单 App │ │ 备忘 App │ │ 我的 App │   │
-│  └────┬────┘ └────┬────┘ └────┬─────┘   │
+│  ┌─────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐   │
+│  │  点单 App │ │ 备忘 App │ │ 我的 App │ │ 商城 App │   │
+│  └────┬────┘ └────┬────┘ └────┬─────┘ └────┬─────┘   │
 │       │           │            │         │
 │  ┌────┴───────────┴────────────┴─────┐   │
 │  │       Context 层（状态管理）        │   │
@@ -39,7 +39,7 @@
 │  │          路由层 (routes/)          │   │
 │  │  auth / api / shares / plans /    │   │
 │  │  votes / preferences / notices /  │   │
-│  │  profile / version-logs           │   │
+│  │  profile / mall / version-logs    │   │
 │  └───────────────┬───────────────────┘   │
 │  ┌───────────────┴───────────────────┐   │
 │  │       中间件 (middleware/)         │   │
@@ -86,6 +86,7 @@
 | `menu` | 点单 | ✅ 已完成 | 核心应用，含 7 个 tab（菜单/今日/计划/投票/记录/采购/菜谱） |
 | `notice` | 备忘 | ✅ 已完成 | 家庭公告 + 个人待办事项 |
 | `profile` | 我的 | 🆕 新增 | 个人中心：用户信息 + 版本更新日志 |
+| `mall` | 商城 | 🆕 新增 | 积分商城：商品浏览、积分兑换、兑换记录 |
 
 ### 2.2 点单子应用 Tab 详解
 
@@ -111,11 +112,43 @@
 
 | 功能 | 状态 | 描述 |
 |---|---|---|
-| 用户信息展示 | 🆕 | 展示用户名、昵称、注册时间、饮食偏好摘要（过敏原/忌口/饮食类型） |
-| 版本更新日志 | 🆕 | 时间线形式展示应用版本更新记录，含版本号、发布日期、变更内容列表 |
-| 退出登录 | 🆕 | 页脚提供退出登录入口 |
+| 用户信息展示 | ✅ | 展示用户名、昵称、注册时间、积分余额、饮食偏好摘要（过敏原/忌口/饮食类型） |
+| 版本更新日志 | ✅ | 时间线形式展示应用版本更新记录，含版本号、发布日期、变更内容列表；**默认折叠**，点击展开查看详情 |
+| 兑换记录查看 | 🆕 | 展示当前用户在积分商城中的兑换历史（最近 10 条），含商品名称、消耗积分、兑换时间 |
+| 退出登录 | ✅ | 页脚提供退出登录入口 |
 
-### 2.5 通用功能
+### 2.5 商城子应用功能 🆕
+
+| 功能 | 状态 | 描述 |
+|---|---|---|
+| 商品浏览 | 🆕 | 分类展示可兑换商品（洗头券、按摩券、洗碗券等），显示所需积分与库存 |
+| 积分兑换 | 🆕 | 选择商品 → 确认扣减积分 → 生成兑换记录；积分不足或库存不足时提示 |
+| 兑换记录 | 🆕 | 查看个人的兑换历史记录，含商品名称、消耗积分、兑换时间、状态 |
+| 我的积分 | 🆕 | 在商城页面顶部展示当前积分余额，与 users 表 points 字段联动 |
+
+**积分获取规则（建议后期实现自动化）：**
+- 初始赠送：新用户注册赠送 100 积分
+- 每日点菜：每点一道菜 +5 积分
+- 创建菜谱：每新增一道菜谱 +10 积分
+- 参与投票：每参与一次投票 +3 积分
+- 当前阶段积分暂由数据库手动调整，后期实现自动累加规则
+
+**商品分类：**
+
+| 分类 | 说明 | 示例商品 |
+|---|---|---|
+| 家务券 | 家务相关服务兑换 | 洗碗券、扫地券、倒垃圾券 |
+| 休闲券 | 生活休闲服务兑换 | 洗头券、按摩券、电影券、游戏券 |
+| 其他 | 未分类商品 | 自定义商品 |
+
+**业务规则：**
+- 每个用户对同一商品无兑换次数限制（只要积分够、有库存）
+- 库存为 -1 的商品视为无限库存
+- 已下架（is_active=0）的商品不展示
+- 兑换成功后积分即时扣减，不可撤销
+- 兑换记录永久保留，用于追溯
+
+### 2.6 通用功能
 
 | 功能 | 状态 | 描述 |
 |---|---|---|
@@ -127,7 +160,7 @@
 | Toast 通知 | ✅ | 全局轻提示组件（success/error/info） |
 | 自动重连 | ✅ | WebSocket 断线指数退避重连（1s→30s max） |
 
-### 2.6 待开发功能
+### 2.7 待开发功能
 
 | 功能 | 优先级 | 说明 |
 |---|---|---|
@@ -165,7 +198,7 @@
 │
 ├── server/                 # 后端代码
 │   ├── index.js            # 服务入口（Express + WS 初始化）
-│   ├── db.js               # 数据库初始化、建表、种子数据（含 version_logs）
+│   ├── db.js               # 数据库初始化、建表、种子数据（含 mall_items + version_logs）
 │   ├── ws.js               # WebSocket 连接管理与广播
 │   ├── middleware/
 │   │   └── auth.js         # JWT 生成与验证中间件
@@ -177,6 +210,7 @@
 │       ├── votes.js        # 投票完整流程
 │       ├── preferences.js  # 用户饮食偏好
 │       ├── notices.js      # 家庭公告 + 个人待办
+│       ├── mall.js          # 🆕 积分商城（商品管理 + 积分兑换）
 │       └── profile.js      # 🆕 个人中心（用户信息汇总 + 版本更新日志）
 │
 ├── src/                    # 前端代码
@@ -203,6 +237,7 @@
 │   │   ├── RecipeManager.jsx     # 菜谱管理（CRUD+导入导出）
 │   │   ├── NoticeBoard.jsx       # 备忘（公告+待办）
 │   │   ├── ProfilePage.jsx       # 🆕 我的（用户信息 + 版本更新日志）
+│   │   ├── MallPage.jsx           # 🆕 积分商城（商品浏览、积分兑换、兑换记录）
 │   │   └── ShareRecipe.jsx       # 菜谱分享查看页（免登录）
 │   └── components/         # 通用组件
 │       ├── PreferenceDialog.jsx  # 饮食偏好设置弹窗
@@ -237,6 +272,9 @@
 ```
 users ──1:1── user_preferences
   │
+  ├── (via user_id)
+  ├── redemption_records ──N:1── mall_items
+  │
   │ (via nickname)
   ├── daily_orders ──N:1── recipes
   │
@@ -251,6 +289,7 @@ users ──1:1── user_preferences
   └── shares ──N:1── recipes
 
 version_logs ── (独立表，无外键关联)
+mall_items ── (独立表，无外键关联)
 ```
 
 ### 4.2 recipes（菜谱表）
@@ -287,6 +326,7 @@ version_logs ── (独立表，无外键关联)
 | username | TEXT | ✓ | 用户名，UNIQUE |
 | password_hash | TEXT | ✓ | Bcrypt 加密的密码哈希 |
 | nickname | TEXT | ✓ | 显示昵称 |
+| points | INTEGER | | 积分余额，默认 100（新用户注册赠送 100 积分）🆕 |
 | created_at | TEXT | | 注册时间 |
 
 ### 4.5 shares（分享表）
@@ -376,7 +416,46 @@ version_logs ── (独立表，无外键关联)
 
 **注意：** notices 表在 `server/routes/notices.js` 中动态建表（`CREATE TABLE IF NOT EXISTS`），而非在 `db.js` 中统一管理。
 
-### 4.12 version_logs（版本更新日志表）🆕
+### 4.12 mall_items（商城商品表）🆕
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| id | INTEGER | PK | 自增主键 |
+| name | TEXT | ✓ | 商品名称（如"洗头券"、"按摩券"） |
+| description | TEXT | | 商品描述 |
+| points | INTEGER | ✓ | 兑换所需积分 |
+| stock | INTEGER | | 库存数量，-1 表示无限库存，默认 -1 |
+| image | TEXT | | 商品图片（emoji 或 URL） |
+| category | TEXT | ✓ | 分类：家务券/休闲券/其他 |
+| is_active | INTEGER | | 是否上架（1=上架，0=下架），默认 1 |
+| created_at | TEXT | | 创建时间 |
+| updated_at | TEXT | | 更新时间 |
+
+**业务规则：**
+- 库存扣减在兑换时通过事务保证原子性（`UPDATE stock = stock - 1 WHERE stock > 0 OR stock = -1`）
+- is_active=0 的商品不在商城中展示
+- 商品删除为软删除：修改 is_active=0 或物理删除（需确认无关联兑换记录）
+- 在 `db.js` 中统一建表，建表时自动插入种子商品（洗头券、按摩券等）
+
+### 4.13 redemption_records（兑换记录表）🆕
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| id | INTEGER | PK | 自增主键 |
+| user_id | INTEGER | ✓ | 用户 ID，外键 → users.id |
+| item_id | INTEGER | ✓ | 商品 ID，外键 → mall_items.id |
+| points_spent | INTEGER | ✓ | 消耗积分（快照值，防止商品积分变动后历史记录失真） |
+| item_name | TEXT | ✓ | 商品名称快照（兑换时的商品名） |
+| status | TEXT | | 状态：completed（默认） |
+| created_at | TEXT | | 兑换时间 |
+
+**业务规则：**
+- `points_spent` 和 `item_name` 为快照字段，兑换时从 `mall_items` 取值写入，后续商品积分/名称变更不影响历史记录
+- `status` 当前仅 `completed`，预留 `cancelled` 状态供后期扩展（退款/撤销场景）
+- 按 `created_at DESC` 排序，最新兑换在前
+- 兑换操作为事务：1) 校验积分 + 库存；2) 扣减积分；3) 扣减库存；4) 写入兑换记录
+
+### 4.14 version_logs（版本更新日志表）🆕
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
@@ -395,7 +474,9 @@ version_logs ── (独立表，无外键关联)
 ```sql
 INSERT INTO version_logs (version, release_date, changes) VALUES
 ('v1.0', '2026-06-01', '["系统上线：点单、备忘两大核心模块","菜谱管理（CRUD + 导入导出）","每日点单 + 周计划编排","投票功能（提名 + 投票 + 中选入菜）","饮食偏好（过敏原/忌口标记）","家庭公告 + 个人待办","WebSocket 实时同步","用户注册/登录（JWT 认证）"]'),
-('v1.1', '2026-06-09', '["新增「我的」页面：展示个人信息与饮食偏好摘要","版本更新日志时间线展示","优化应用卡片布局"]');
+('v1.1', '2026-06-09', '["新增「我的」页面：展示个人信息与饮食偏好摘要","版本更新日志时间线展示","优化应用卡片布局"]'),
+('v1.2', '2026-06-09', '["新增积分商城子应用","用户积分体系：注册赠送积分、行为获取积分","商城商品管理：分类展示、库存管理","积分兑换：兑换券类商品（洗头券、按摩券等）","兑换记录追溯"]'),
+('v1.3', '2026-06-10', '["「我的」页面支持查看积分商城兑换记录","更新日志默认折叠，点击展开查看详情"]');
 ```
 
 ---
@@ -503,7 +584,59 @@ INSERT INTO version_logs (version, release_date, changes) VALUES
 | PATCH | `/api/notices/:id/toggle` | — | `Notice` | 切换待办完成状态（仅所有者） |
 | DELETE | `/api/notices/:id` | — | `{ ok: true }` | 删除（仅作者） |
 
-### 5.10 个人中心接口（/api/profile）🆕 — 需认证
+### 5.10 积分商城接口（/api/mall）🆕 — 需认证
+
+| 方法 | 路径 | 入参 | 出参 | 说明 |
+|---|---|---|---|---|
+| GET | `/api/mall/items` | `?category=` | `MallItem[]` | 获取商城商品列表，可按分类筛选，仅返回 is_active=1 的商品 |
+| GET | `/api/mall/items/:id` | — | `MallItem` | 获取单个商品详情 |
+| GET | `/api/mall/my-points` | — | `{ points: number }` | 获取当前用户积分余额 |
+| POST | `/api/mall/redeem` | `{ itemId }` | `RedemptionRecord` | 兑换商品（事务操作：校验积分→扣积分→扣库存→写记录） |
+| GET | `/api/mall/records` | — | `RedemptionRecord[]` | 获取当前用户的兑换记录（按时间倒序） |
+
+**出参 MallItem 结构：**
+```json
+{
+  "id": 1,
+  "name": "洗头券",
+  "description": "享受一次洗发服务",
+  "points": 50,
+  "stock": 10,
+  "image": "💆",
+  "category": "休闲券",
+  "isActive": true
+}
+```
+
+**出参 RedemptionRecord 结构：**
+```json
+{
+  "id": 1,
+  "itemId": 1,
+  "itemName": "洗头券",
+  "pointsSpent": 50,
+  "status": "completed",
+  "createdAt": "2026-06-09 17:30"
+}
+```
+
+**兑換业务规则：**
+- **积分校验**：兑换前检查 `users.points >= mall_items.points`，积分不足返回 400 错误 "积分不足"
+- **库存校验**：库存 > 0 或库存 = -1（无限）才可兑换；库存不足返回 400 错误 "库存不足"
+- **事务操作**：积分扣减 + 库存扣减 + 记录写入在同一事务内完成，任一失败则全部回滚
+- **快照机制**：`points_spent` 和 `item_name` 在兑换时从 `mall_items` 快照写入，后续修改商品不影响历史记录
+- **不可撤销**：当前版本不支持兑换撤销/退款，status 始终为 completed
+- **WS 广播**：兑换成功后广播 `points_updated` 事件，通知所有客户端该用户积分变更
+
+**商城商品管理接口（暂由数据库直接维护，后期扩展后台管理）：**
+
+| 方法 | 路径 | 入参 | 出参 | 说明 |
+|---|---|---|---|---|
+| POST | `/api/mall/items` | `{ name, points, category, description?, stock?, image? }` | `MallItem` | 新增商品（管理接口，建议后期加权限） |
+| PUT | `/api/mall/items/:id` | 同 POST（字段可选） | `MallItem` | 更新商品信息 |
+| DELETE | `/api/mall/items/:id` | — | `{ success: true }` | 删除/下架商品 |
+
+### 5.11 个人中心接口（/api/profile）🆕 — 需认证
 
 | 方法 | 路径 | 入参 | 出参 | 说明 |
 |---|---|---|---|---|
@@ -515,21 +648,32 @@ INSERT INTO version_logs (version, release_date, changes) VALUES
   "id": 1,
   "username": "zhangsan",
   "nickname": "张三",
+  "points": 150,
   "createdAt": "2026-06-01 12:00",
   "preferences": {
     "allergies": ["花生", "虾"],
     "dislikes": ["香菜"],
     "dietaryType": ""
-  }
+  },
+  "redemptionRecords": [
+    {
+      "id": 1,
+      "itemName": "洗头券",
+      "pointsSpent": 50,
+      "status": "completed",
+      "createdAt": "2026-06-09 17:30"
+    }
+  ]
 }
 ```
 
 **业务规则：**
-- 用户信息从 `users` 表查询
+- 用户信息从 `users` 表查询（含 points 积分字段）
 - 偏好信息从 `user_preferences` 表 LEFT JOIN 查询（用户注册时自动创建空偏好记录，始终有值）
+- `redemptionRecords` 从 `redemption_records` 表查询当前用户的兑换记录，最多返回 10 条，按 `created_at DESC` 排序 🆕
 - 仅返回当前登录用户自己的信息，无权限查看他人
 
-### 5.11 版本更新日志接口（/api/version-logs）🆕 — 需认证
+### 5.12 版本更新日志接口（/api/version-logs）🆕 — 需认证
 
 | 方法 | 路径 | 入参 | 出参 | 说明 |
 |---|---|---|---|---|
@@ -560,7 +704,7 @@ INSERT INTO version_logs (version, release_date, changes) VALUES
 - `changes` 字段在库中存储为 JSON 字符串，返回时 `JSON.parse` 为数组
 - 该接口不涉及增删改，版本更新日志通过 `db.js` 种子数据或手动 SQL 维护
 
-### 5.12 WebSocket 事件清单
+### 5.13 WebSocket 事件清单
 
 WebSocket 连接路径：`ws://host:port/ws?token=<jwt_token>`
 
@@ -578,6 +722,7 @@ WebSocket 连接路径：`ws://host:port/ws?token=<jwt_token>`
 | `vote_updated` | S→C | `{ vote: Vote }` | 投票/提名变更 |
 | `vote_closed` | S→C | `{ voteId, winner? }` | 投票关闭 |
 | `vote_winner_applied` | S→C | `{ voteId, recipe }` | 中选菜加入菜单 |
+| `points_updated` | S→C | `{ userId, points, change }` | 用户积分变更（兑换/获取）🆕 |
 
 ---
 
@@ -589,7 +734,7 @@ WebSocket 连接路径：`ws://host:port/ws?token=<jwt_token>`
 |---|---|---|
 | React 组件文件 | PascalCase | `MenuBrowser.jsx`, `HomePage.jsx`, `ProfilePage.jsx` |
 | Context 文件 | PascalCase + Context 后缀 | `AuthContext.jsx`, `MenuContext.jsx` |
-| 服务端路由文件 | 小写，按业务命名 | `api.js`, `votes.js`, `notices.js`, `profile.js` |
+| 服务端路由文件 | 小写，按业务命名 | `api.js`, `votes.js`, `notices.js`, `mall.js`, `profile.js` |
 | CSS 变量 | kebab-case，前缀 `--` | `--bg`, `--text-primary`, `--accent` |
 | API 路径 | RESTful 风格 | `/api/recipes`, `/api/votes/:id`, `/api/profile` |
 | 数据库表名 | snake_case | `daily_orders`, `weekly_plans`, `version_logs` |
@@ -760,20 +905,38 @@ npm start         # 构建 + 启动后端（静态文件 + API 一体）
 |---|---|---|
 | v1.0 | 2026-06-01 | 系统上线：点单、备忘两大核心模块，菜谱管理，投票，饮食偏好等 |
 | v1.1 | 2026-06-09 | 新增「我的」页面，版本更新日志展示 |
+| v1.2 | 2026-06-09 | 新增积分商城模块，积分兑换券类商品 |
+| v1.3 | 2026-06-10 | 「我的」页面增加兑换记录查看，更新日志支持折叠/展开 |
 
-### 8.3 "我的"页面实现要点 🆕
+同时插入商城种子商品（`mall_items` 表）：
+
+| 商品名称 | 分类 | 所需积分 | 库存 |
+|---|---|---|---|
+| 🧴 洗头券 | 休闲券 | 50 | 10 |
+| 💆 按摩券 | 休闲券 | 100 | 5 |
+| 🍽️ 洗碗券 | 家务券 | 30 | -1（无限） |
+| 🧹 扫地券 | 家务券 | 40 | -1（无限） |
+| 🎬 电影券 | 休闲券 | 200 | 3 |
+| 🎮 游戏券 | 休闲券 | 80 | 5 |
+
+### 8.3 "我的"页面实现要点
 
 **前端组件 `src/pages/ProfilePage.jsx`：**
 - 接受 `{ onBack }` prop，顶部栏包含返回按钮和"我的"标题
-- **用户信息卡片**：头像占位（圆形色块+昵称首字）、用户名、昵称、注册时间
+- **用户信息卡片**：头像占位（圆形色块+昵称首字）、用户名、昵称、注册时间、积分余额（link 到商城入口）🆕
 - **饮食偏好摘要卡片**：过敏原标签（红色系）、忌口标签（橙色系）、饮食类型（如有）
-- **版本更新日志**：时间线样式，每条记录展示版本号、发布日期、变更列表
+- **兑换记录卡片** 🆕：展示在积分商城中的兑换历史，列表形式显示商品名称、消耗积分、兑换时间，最多 10 条，无记录时显示"暂无兑换记录"
+- **版本更新日志**：时间线样式，每条记录展示版本号、发布日期、变更内容列表；**默认折叠**，仅显示版本号和日期摘要，点击后展开查看完整变更内容 🆕
 - 页面底部提供"退出登录"按钮（调用 `useAuth().logout()`）
-- 数据通过 `useEffect` 并行请求 `/api/profile` 和 `/api/version-logs`
+- 数据通过 `useEffect` 请求 `/api/profile`（一次请求获取用户信息 + 偏好 + 兑换记录），版本日志通过 `/api/version-logs` 独立获取
+
+**交互规则 🆕：**
+- **版本日志折叠/展开**：每条更新日志默认折叠，仅显示版本号和日期；点击行或展开图标后展示该版本的变更列表；支持同时展开多条（非手风琴模式）；展开状态由页面内 `expandedVersions` state（Set 类型）管理
+- **兑换记录**：作为用户信息卡片的一部分或独立卡片，直接平铺展示，无需折叠
 
 **后端路由 `server/routes/profile.js`：**
 - 使用 `authMiddleware` 保护所有接口
-- GET `/api/profile`：JOIN users + user_preferences 查询当前用户完整档案
+- GET `/api/profile`：JOIN users + user_preferences 查询当前用户完整档案，同时子查询 `redemption_records` 表取最近 10 条兑换记录 🆕
 - GET `/api/version-logs`：查询 version_logs 表全量返回
 
 **HomePage.jsx APPS 卡片配置：**
@@ -781,7 +944,7 @@ npm start         # 构建 + 启动后端（静态文件 + API 一体）
 {
   key: 'profile',
   name: '我的',
-  desc: '个人信息、版本更新',
+  desc: '个人信息、兑换记录、版本更新',
   emoji: '👤',
   color: '#F5F0FF',
   border: '#D4C5F0',
@@ -796,7 +959,60 @@ npm start         # 构建 + 启动后端（静态文件 + API 一体）
 )}
 ```
 
-### 8.4 扩展规划建议
+### 8.4 积分商城实现要点 🆕
+
+**前端组件 `src/pages/MallPage.jsx`：**
+- 接受 `{ onBack }` prop，顶部栏包含返回按钮和"积分商城"标题
+- **积分余额卡片**：页面顶部展示当前积分（大字号 + 积分图标），数据通过 `/api/mall/my-points` 获取
+- **商品列表**：按分类分组（家务券/休闲券/其他），每个商品卡片展示 emoji 图标、名称、描述、所需积分、库存状态
+- **商品筛选**：顶部 tab 切换分类，默认显示全部
+- **兑换弹窗**：点击商品卡片弹出确认弹窗（商品名 + 消耗积分 + 当前积分 + 兑换后积分），确认后调用 POST `/api/mall/redeem`
+- **兑换记录**：页面底部"兑换记录"入口，点击弹出记录列表（最近 20 条）
+- 积分变更通过 WebSocket `points_updated` 事件实时更新
+- 兑换成功后 Toast 提示"兑换成功"，并自动刷新积分和商品列表
+
+**后端路由 `server/routes/mall.js`：**
+- 使用 `authMiddleware` 保护所有接口
+- GET `/api/mall/items`：查询 `mall_items` 表，仅返回 is_active=1 的商品，支持 `?category=` 筛选
+- GET `/api/mall/items/:id`：查询单个商品详情
+- GET `/api/mall/my-points`：从 `users` 表查询当前用户积分
+- POST `/api/mall/redeem`：事务操作（BEGIN TRANSACTION → 校验积分 → UPDATE users.points → UPDATE mall_items.stock → INSERT redemption_records → COMMIT），失败则 ROLLBACK
+- GET `/api/mall/records`：JOIN redemption_records + mall_items 查询当前用户兑换记录
+- POST `/api/mall/items` / PUT `/api/mall/items/:id` / DELETE `/api/mall/items/:id`：商品管理接口（预留，当前暂由数据库直接维护）
+
+**数据库变更（`server/db.js`）：**
+- `users` 表新增 `points INTEGER DEFAULT 100`（新用户注册赠送 100 积分）
+- 新建 `mall_items` 表和 `redemption_records` 表（`CREATE TABLE IF NOT EXISTS`）
+- 插入 6 条种子商品（洗头券、按摩券、洗碗券、扫地券、电影券、游戏券）
+
+**WebSocket 集成（`server/ws.js`）：**
+- 兑换成功后广播 `points_updated` 事件：`{ userId, points, change }`
+- 前端 `WSContext` 监听 `points_updated` 事件，更新 AuthContext 或 MallContext 中的积分缓存
+
+**HomePage.jsx APPS 卡片配置：**
+```js
+{
+  key: 'mall',
+  name: '商城',
+  desc: '积分兑换，好物直达',
+  emoji: '🎁',
+  color: '#FFF7ED',
+  border: '#FED7AA',
+  accent: '#D4743C',
+}
+```
+
+**App.jsx 路由注册：**
+```jsx
+{currentApp === 'mall' && (
+  <MallPage onBack={() => setCurrentApp(null)} />
+)}
+```
+
+**新增依赖：**
+- 无新增 npm 依赖，复用现有 SQLite 和 Express 即可
+
+### 8.5 扩展规划建议
 
 基于当前架构，建议按以下顺序扩展：
 

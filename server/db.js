@@ -133,6 +133,42 @@ db.exec(`
   );
 `);
 
+// Migration: add points column to users table
+try { db.exec(`ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 100`); } catch (e) { /* already exists */ }
+// 已有用户 points 字段补填默认值（ALTER TABLE 不会回填已有行）
+db.prepare('UPDATE users SET points = 100 WHERE points IS NULL').run();
+
+// 积分商城商品表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mall_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    points INTEGER NOT NULL,
+    stock INTEGER DEFAULT -1,
+    image TEXT DEFAULT '',
+    category TEXT NOT NULL DEFAULT '其他',
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+`);
+
+// 兑换记录表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS redemption_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    item_id INTEGER NOT NULL,
+    points_spent INTEGER NOT NULL,
+    item_name TEXT NOT NULL,
+    status TEXT DEFAULT 'completed',
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (item_id) REFERENCES mall_items(id)
+  );
+`);
+
 // 版本更新日志表
 db.exec(`
   CREATE TABLE IF NOT EXISTS version_logs (
@@ -242,6 +278,66 @@ if (versionCount.cnt === 0) {
 
   insertManyVersions(versions);
   console.log('  ✓ 已初始化 2 条版本更新日志');
+}
+
+// 种子积分商城商品（仅在表为空时插入）
+const mallCount = db.prepare('SELECT COUNT(*) as cnt FROM mall_items').get();
+if (mallCount.cnt === 0) {
+  const insertMallItem = db.prepare(`
+    INSERT INTO mall_items (name, description, points, stock, image, category)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  const mallItems = [
+    ['洗头券', '享受一次洗发服务，限一人使用', 50, 10, '💆', '休闲券'],
+    ['按摩券', '享受一次肩颈按摩服务', 80, 5, '💪', '休闲券'],
+    ['电影券', '任选一部电影观看，爆米花自备', 60, -1, '🎬', '休闲券'],
+    ['游戏券', '获得额外 1 小时游戏时间', 40, 20, '🎮', '休闲券'],
+    ['洗碗券', '免除一次洗碗任务', 30, 10, '🍽️', '家务券'],
+    ['扫地券', '免除一次扫地/拖地任务', 35, 10, '🧹', '家务券'],
+    ['倒垃圾券', '免除一次倒垃圾任务', 20, 15, '🗑️', '家务券'],
+    ['免唠叨券', '获得一次免唠叨机会（有效期 1 天）', 100, 3, '🤐', '其他'],
+  ];
+
+  const insertManyMall = db.transaction((items) => {
+    for (const item of items) {
+      insertMallItem.run(...item);
+    }
+  });
+
+  insertManyMall(mallItems);
+  console.log('  ✓ 已初始化 8 件商城商品');
+}
+
+// v1.2 版本日志追加（仅在未存在时插入）
+const v12Exists = db.prepare("SELECT id FROM version_logs WHERE version = ?").get('v1.2');
+if (!v12Exists) {
+  db.prepare(`INSERT INTO version_logs (version, release_date, changes) VALUES (?, ?, ?)`).run(
+    'v1.2',
+    '2026-06-09',
+    JSON.stringify([
+      '新增积分商城子应用',
+      '用户积分体系：注册赠送积分、行为获取积分',
+      '商城商品管理：分类展示、库存管理',
+      '积分兑换：兑换券类商品（洗头券、按摩券等）',
+      '兑换记录追溯'
+    ])
+  );
+  console.log('  ✓ 已追加 v1.2 版本更新日志');
+}
+
+// v1.3 版本日志追加（仅在未存在时插入）
+const v13Exists = db.prepare("SELECT id FROM version_logs WHERE version = ?").get('v1.3');
+if (!v13Exists) {
+  db.prepare(`INSERT INTO version_logs (version, release_date, changes) VALUES (?, ?, ?)`).run(
+    'v1.3',
+    '2026-06-10',
+    JSON.stringify([
+      '「我的」页面支持查看积分商城兑换记录',
+      '更新日志默认折叠，点击展开查看详情',
+    ])
+  );
+  console.log('  ✓ 已追加 v1.3 版本更新日志');
 }
 
 export default db;

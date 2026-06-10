@@ -11,6 +11,8 @@
 |-----|------|------|------|
 | menu | 点单 | 已有 | 完整保留，有菜单/今日/计划/投票/记录/采购/菜谱 |
 | notice | 备忘 | 已有 | 家庭公告 + 个人待办，后端 notices 表 |
+| profile | 我的 | 新增 | 个人中心 + 版本更新日志 |
+| mall | 商城 | 新增 | 积分商城：商品浏览、积分兑换、兑换记录 |
 
 ## 技术栈
 - 前端：React 18 + Vite 5 + Tailwind CSS
@@ -21,7 +23,7 @@
 
 ## 数据库
 路径：`data/family-menu.db`
-主要表：recipes, daily_orders, users, shares, weekly_plans, votes, vote_candidates, vote_records, user_preferences, notices
+主要表：recipes, daily_orders, users, shares, weekly_plans, votes, vote_candidates, vote_records, user_preferences, notices, mall_items, redemption_records, version_logs
 
 ## 关键文件
 - `src/App.jsx`：顶层入口，Hub 状态机
